@@ -1,0 +1,24 @@
+# ── Data pipeline ─────────────────────────────────────────────────────────────
+entsoe-py                  # ENTSO-E API client (prices, generation, flows)
+openmeteo-requests         # Open-Meteo weather API client
+requests-cache             # HTTP caching (avoids re-fetching same weather data)
+retry-requests             # Automatic retry on API failures
+
+# ── Database ──────────────────────────────────────────────────────────────────
+timedb                     # TimeDB Python SDK (ClickHouse bitemporal store)
+python-dotenv              # Load .env file into environment variables
+
+# ── ML ────────────────────────────────────────────────────────────────────────
+lightgbm                   # Primary forecasting model (quantile regression)
+scikit-learn               # Ridge baseline, LASSO (LEAR), metrics
+numpy
+pandas
+holidays                   # Swedish public holiday calendar
+
+# ── Evaluation ────────────────────────────────────────────────────────────────
+properscoring              # CRPS computation (probabilistic forecast metric)
+
+# ── Dashboard ─────────────────────────────────────────────────────────────────
+streamlit==1.35.0
+plotly
+pytz

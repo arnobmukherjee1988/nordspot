@@ -1,0 +1,30 @@
+# Environment — never commit secrets
+.env
+
+# Virtual environment
+.venv/
+
+# Model artifacts (large binary files)
+model/*.pkl
+model/*.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# macOS
+.DS_Store
+
+# Weather HTTP cache (created by openmeteo-requests)
+.weather_cache*
+.weather_forecast_cache*
+
+# IDE
+.vscode/
+.idea/
