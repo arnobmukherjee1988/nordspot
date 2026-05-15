@@ -1,0 +1,24 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{n}{td} \PYG{o}{=} \PYG{n}{init\PYGZus{}schema}\PYG{p}{(}\PYG{p}{)}                       \PYG{c+c1}{\PYGZsh{} connect + create tables}
+
+\PYG{c+c1}{\PYGZsh{} Write}
+\PYG{n}{write\PYGZus{}series}\PYG{p}{(}\PYG{n}{td}\PYG{p}{,} \PYG{n}{SERIES}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{prices\PYGZus{}raw}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{,} \PYG{n}{df}\PYG{p}{,} \PYG{n}{retention}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{forever}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+\PYG{n}{write\PYGZus{}series}\PYG{p}{(}\PYG{n}{td}\PYG{p}{,} \PYG{n}{SERIES}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{lgbm\PYGZus{}q50}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{,} \PYG{n}{df}\PYG{p}{,} \PYG{n}{retention}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{forever}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+             \PYG{n}{knowledge\PYGZus{}time}\PYG{o}{=}\PYG{n}{datetime}\PYG{o}{.}\PYG{n}{now}\PYG{p}{(}\PYG{n}{timezone}\PYG{o}{.}\PYG{n}{utc}\PYG{p}{)}\PYG{p}{)}
+
+\PYG{c+c1}{\PYGZsh{} Read (latest known)}
+\PYG{n}{raw} \PYG{o}{=} \PYG{n}{td}\PYG{o}{.}\PYG{n}{read}\PYG{p}{(}\PYG{n}{series\PYGZus{}ids}\PYG{o}{=}\PYG{p}{[}\PYG{n}{SERIES}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{prices\PYGZus{}raw}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]}\PYG{p}{,} \PYG{n}{retention}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{forever}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+
+\PYG{c+c1}{\PYGZsh{} As\PYGZhy{}of query (bitemporal)}
+\PYG{n}{raw} \PYG{o}{=} \PYG{n}{td}\PYG{o}{.}\PYG{n}{read}\PYG{p}{(}\PYG{n}{series\PYGZus{}ids}\PYG{o}{=}\PYG{p}{[}\PYG{l+m+mi}{20}\PYG{p}{,}\PYG{l+m+mi}{21}\PYG{p}{,}\PYG{l+m+mi}{22}\PYG{p}{]}\PYG{p}{,} \PYG{n}{retention}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{forever}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+              \PYG{n}{end\PYGZus{}known}\PYG{o}{=}\PYG{n}{some\PYGZus{}datetime}\PYG{p}{)}
+
+\PYG{c+c1}{\PYGZsh{} Include knowledge\PYGZus{}time in result}
+\PYG{n}{raw} \PYG{o}{=} \PYG{n}{td}\PYG{o}{.}\PYG{n}{read}\PYG{p}{(}\PYG{n}{series\PYGZus{}ids}\PYG{o}{=}\PYG{p}{[}\PYG{l+m+mi}{21}\PYG{p}{]}\PYG{p}{,} \PYG{n}{retention}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{forever}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+              \PYG{n}{include\PYGZus{}knowledge\PYGZus{}time}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+
+\PYG{c+c1}{\PYGZsh{} Gate\PYGZhy{}closure backtest}
+\PYG{n}{raw} \PYG{o}{=} \PYG{n}{td}\PYG{o}{.}\PYG{n}{read\PYGZus{}relative}\PYG{p}{(}\PYG{n}{series\PYGZus{}ids}\PYG{o}{=}\PYG{p}{[}\PYG{l+m+mi}{21}\PYG{p}{]}\PYG{p}{,} \PYG{n}{retention}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{forever}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,}
+                        \PYG{n}{days\PYGZus{}ahead}\PYG{o}{=}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{time\PYGZus{}of\PYGZus{}day}\PYG{o}{=}\PYG{n}{time}\PYG{p}{(}\PYG{l+m+mi}{12}\PYG{p}{,}\PYG{l+m+mi}{0}\PYG{p}{)}\PYG{p}{,}
+                        \PYG{n}{start\PYGZus{}valid}\PYG{o}{=}\PYG{n}{from\PYGZus{}dt}\PYG{p}{,} \PYG{n}{end\PYGZus{}valid}\PYG{o}{=}\PYG{n}{to\PYGZus{}dt}\PYG{p}{)}
+\end{MintedVerbatim}

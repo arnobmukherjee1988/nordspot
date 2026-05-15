@@ -1,0 +1,12 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{\PYGZus{}should\PYGZus{}skip\PYGZus{}training}\PYG{p}{(}\PYG{n}{td}\PYG{p}{)}\PYG{p}{:}
+    \PYG{c+c1}{\PYGZsh{} Requires: trained\PYGZus{}at.json exists + model pickle files exist}
+    \PYG{k}{with} \PYG{n+nb}{open}\PYG{p}{(}\PYG{n}{MODEL\PYGZus{}DIR} \PYG{o}{/} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{trained\PYGZus{}at.json}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)} \PYG{k}{as} \PYG{n}{f}\PYG{p}{:}
+        \PYG{n}{info} \PYG{o}{=} \PYG{n}{json}\PYG{o}{.}\PYG{n}{load}\PYG{p}{(}\PYG{n}{f}\PYG{p}{)}
+    \PYG{n}{trained\PYGZus{}dt}     \PYG{o}{=} \PYG{n}{datetime}\PYG{o}{.}\PYG{n}{fromisoformat}\PYG{p}{(}\PYG{n}{info}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{trained\PYGZus{}at}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{)}
+    \PYG{n}{latest\PYGZus{}price}   \PYG{o}{=} \PYG{n}{td}\PYG{o}{.}\PYG{n}{read}\PYG{p}{(}\PYG{n}{series\PYGZus{}ids}\PYG{o}{=}\PYG{p}{[}\PYG{n}{SERIES}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{prices\PYGZus{}raw}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{]}\PYG{p}{,}
+                             \PYG{n}{retention}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{forever}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}\PYG{o}{.}\PYG{n}{to\PYGZus{}pandas}\PYG{p}{(}\PYG{p}{)}
+    \PYG{n}{latest\PYGZus{}time}    \PYG{o}{=} \PYG{n}{pd}\PYG{o}{.}\PYG{n}{to\PYGZus{}datetime}\PYG{p}{(}\PYG{n}{latest\PYGZus{}price}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{valid\PYGZus{}time}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{,} \PYG{n}{utc}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}\PYG{o}{.}\PYG{n}{max}\PYG{p}{(}\PYG{p}{)}
+    \PYG{n}{gap\PYGZus{}days}       \PYG{o}{=} \PYG{p}{(}\PYG{n}{latest\PYGZus{}time} \PYG{o}{\PYGZhy{}} \PYG{n}{trained\PYGZus{}dt}\PYG{p}{)}\PYG{o}{.}\PYG{n}{total\PYGZus{}seconds}\PYG{p}{(}\PYG{p}{)} \PYG{o}{/} \PYG{l+m+mi}{86\PYGZus{}400}
+    \PYG{k}{return} \PYG{n}{gap\PYGZus{}days} \PYG{o}{\PYGZlt{}} \PYG{l+m+mi}{7}    \PYG{c+c1}{\PYGZsh{} skip if less than 7 days of new data}
+\end{MintedVerbatim}

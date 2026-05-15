@@ -1,0 +1,7 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{n}{price\PYGZus{}lag24} \PYG{o}{=} \PYG{n}{price}\PYG{o}{.}\PYG{n}{shift}\PYG{p}{(}\PYG{l+m+mi}{24}\PYG{p}{)}          \PYG{c+c1}{\PYGZsh{} shift first! Avoids leakage.}
+\PYG{n}{roll\PYGZus{}feats} \PYG{o}{=} \PYG{p}{[}
+    \PYG{n}{\PYGZus{}rolling\PYGZus{}mean}\PYG{p}{(}\PYG{n}{price\PYGZus{}lag24}\PYG{o}{.}\PYG{n}{rename}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}price\PYGZdq{}}\PYG{p}{),} \PYG{l+m+mi}{24}\PYG{p}{)}\PYG{o}{.}\PYG{n}{rename}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}price\PYGZus{}roll24h\PYGZdq{}}\PYG{p}{),}
+    \PYG{n}{\PYGZus{}rolling\PYGZus{}mean}\PYG{p}{(}\PYG{n}{price\PYGZus{}lag24}\PYG{o}{.}\PYG{n}{rename}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}price\PYGZdq{}}\PYG{p}{),} \PYG{l+m+mi}{168}\PYG{p}{)}\PYG{o}{.}\PYG{n}{rename}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}price\PYGZus{}roll168h\PYGZdq{}}\PYG{p}{),}
+\PYG{p}{]}
+\end{Verbatim}

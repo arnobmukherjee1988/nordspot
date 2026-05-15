@@ -1,0 +1,4 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+docker\PYGZhy{}compose up \PYGZhy{}d        \PYG{c+c1}{\PYGZsh{} start ClickHouse on ports 8123 (HTTP) and 9000 (TCP)}
+docker\PYGZhy{}compose down         \PYG{c+c1}{\PYGZsh{} stop}
+\end{Verbatim}

@@ -1,0 +1,11 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{write\PYGZus{}series}\PYG{p}{(}\PYG{n}{td}\PYG{p}{,} \PYG{n}{series\PYGZus{}id}\PYG{p}{,} \PYG{n}{df}\PYG{p}{,} \PYG{o}{*}\PYG{p}{,} \PYG{n}{retention}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{forever}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{n}{knowledge\PYGZus{}time}\PYG{o}{=}\PYG{k+kc}{None}\PYG{p}{)}\PYG{p}{:}
+\PYG{+w}{    }\PYG{l+s+sd}{\PYGZdq{}\PYGZdq{}\PYGZdq{}Write a tidy DataFrame into TimeDB for a given series\PYGZus{}id.}
+
+\PYG{l+s+sd}{    df must have columns: valid\PYGZus{}time (UTC datetime) and value (float).}
+\PYG{l+s+sd}{    series\PYGZus{}id is added here before writing.}
+\PYG{l+s+sd}{    \PYGZdq{}\PYGZdq{}\PYGZdq{}}
+    \PYG{n}{df} \PYG{o}{=} \PYG{n}{df}\PYG{o}{.}\PYG{n}{copy}\PYG{p}{(}\PYG{p}{)}
+    \PYG{n}{df}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{series\PYGZus{}id}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]} \PYG{o}{=} \PYG{n}{series\PYGZus{}id}          \PYG{c+c1}{\PYGZsh{} tag each row with the series integer ID}
+    \PYG{n}{td}\PYG{o}{.}\PYG{n}{write}\PYG{p}{(}\PYG{n}{df}\PYG{p}{,} \PYG{n}{retention}\PYG{o}{=}\PYG{n}{retention}\PYG{p}{,} \PYG{n}{knowledge\PYGZus{}time}\PYG{o}{=}\PYG{n}{knowledge\PYGZus{}time}\PYG{p}{)}
+\end{MintedVerbatim}

@@ -5,7 +5,7 @@ requests-cache             # HTTP caching (avoids re-fetching same weather data)
 retry-requests             # Automatic retry on API failures
 
 # ── Database ──────────────────────────────────────────────────────────────────
-timedb                     # TimeDB Python SDK (ClickHouse bitemporal store)
+git+https://github.com/rebase-energy/timedb.git@b07591e4c1a172a55d271affe2063d49a4f50ce8  # TimeDB SDK (not the PyPI 'timedb' — different package)
 python-dotenv              # Load .env file into environment variables
 
 # ── ML ────────────────────────────────────────────────────────────────────────

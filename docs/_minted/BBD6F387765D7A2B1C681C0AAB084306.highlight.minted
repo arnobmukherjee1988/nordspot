@@ -1,0 +1,20 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{c+c1}{\PYGZsh{} Start ClickHouse}
+docker\PYGZhy{}compose\PYG{+w}{ }up\PYG{+w}{ }\PYGZhy{}d
+
+\PYG{c+c1}{\PYGZsh{} Fetch / refresh data}
+python\PYG{+w}{ }\PYGZhy{}m\PYG{+w}{ }pipeline.fetch\PYGZus{}prices
+python\PYG{+w}{ }\PYGZhy{}m\PYG{+w}{ }pipeline.fetch\PYGZus{}weather
+
+\PYG{c+c1}{\PYGZsh{} Train models}
+python\PYG{+w}{ }\PYGZhy{}m\PYG{+w}{ }ml.train\PYG{+w}{            }\PYG{c+c1}{\PYGZsh{} skip if \PYGZlt{} 7 days since last run}
+python\PYG{+w}{ }\PYGZhy{}m\PYG{+w}{ }ml.train\PYG{+w}{ }\PYGZhy{}\PYGZhy{}force\PYG{+w}{    }\PYG{c+c1}{\PYGZsh{} always retrain}
+
+\PYG{c+c1}{\PYGZsh{} Launch dashboard}
+.venv/bin/streamlit\PYG{+w}{ }run\PYG{+w}{ }dashboard/app.py
+
+\PYG{c+c1}{\PYGZsh{} Compile this textbook (run twice)}
+\PYG{n+nb}{cd}\PYG{+w}{ }docs
+xelatex\PYG{+w}{ }\PYGZhy{}shell\PYGZhy{}escape\PYG{+w}{ }SE3\PYGZus{}Project\PYGZus{}Textbook.tex
+xelatex\PYG{+w}{ }\PYGZhy{}shell\PYGZhy{}escape\PYG{+w}{ }SE3\PYGZus{}Project\PYGZus{}Textbook.tex
+\end{MintedVerbatim}

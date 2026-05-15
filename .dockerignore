@@ -1,0 +1,23 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+
+# Environment — never bake secrets into the image
+.env
+
+# Version control
+.git/
+.gitignore
+
+# Docs and notebooks (not needed at runtime)
+docs/
+notebooks/
+
+# Model artefacts — bind-mounted at runtime via docker-compose
+model/
+
+# macOS
+.DS_Store

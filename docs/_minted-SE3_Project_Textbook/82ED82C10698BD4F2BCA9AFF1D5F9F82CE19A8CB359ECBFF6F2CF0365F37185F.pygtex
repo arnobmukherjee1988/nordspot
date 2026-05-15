@@ -1,0 +1,28 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{n}{\PYGZus{}VARIABLES} \PYG{o}{=} \PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}temperature\PYGZus{}2m\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}wind\PYGZus{}speed\PYGZus{}10m\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}shortwave\PYGZus{}radiation\PYGZdq{}}\PYG{p}{]}
+\PYG{n}{\PYGZus{}SERIES\PYGZus{}MAP} \PYG{o}{=} \PYG{p}{\PYGZob{}}
+    \PYG{l+s+s2}{\PYGZdq{}temperature\PYGZus{}2m\PYGZdq{}}\PYG{p}{:}      \PYG{n}{SERIES}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}weather\PYGZus{}temperature\PYGZdq{}}\PYG{p}{],}   \PYG{c+c1}{\PYGZsh{} ID 10}
+    \PYG{l+s+s2}{\PYGZdq{}wind\PYGZus{}speed\PYGZus{}10m\PYGZdq{}}\PYG{p}{:}      \PYG{n}{SERIES}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}weather\PYGZus{}wind\PYGZus{}speed\PYGZdq{}}\PYG{p}{],}    \PYG{c+c1}{\PYGZsh{} ID 11}
+    \PYG{l+s+s2}{\PYGZdq{}shortwave\PYGZus{}radiation\PYGZdq{}}\PYG{p}{:} \PYG{n}{SERIES}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}weather\PYGZus{}irradiance\PYGZdq{}}\PYG{p}{],}    \PYG{c+c1}{\PYGZsh{} ID 12}
+\PYG{p}{\PYGZcb{}}
+
+\PYG{c+c1}{\PYGZsh{} Uses requests\PYGZhy{}cache (avoids re\PYGZhy{}fetching same dates) + retry (handles API blips)}
+\PYG{k}{def} \PYG{n+nf}{\PYGZus{}build\PYGZus{}client}\PYG{p}{():}
+    \PYG{n}{cache}   \PYG{o}{=} \PYG{n}{requests\PYGZus{}cache}\PYG{o}{.}\PYG{n}{CachedSession}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}.weather\PYGZus{}cache\PYGZdq{}}\PYG{p}{,} \PYG{n}{expire\PYGZus{}after}\PYG{o}{=}\PYG{l+m+mi}{3600}\PYG{p}{)}
+    \PYG{n}{session} \PYG{o}{=} \PYG{n}{retry}\PYG{p}{(}\PYG{n}{cache}\PYG{p}{,} \PYG{n}{retries}\PYG{o}{=}\PYG{l+m+mi}{5}\PYG{p}{,} \PYG{n}{backoff\PYGZus{}factor}\PYG{o}{=}\PYG{l+m+mf}{0.2}\PYG{p}{)}
+    \PYG{k}{return} \PYG{n}{openmeteo\PYGZus{}requests}\PYG{o}{.}\PYG{n}{Client}\PYG{p}{(}\PYG{n}{session}\PYG{o}{=}\PYG{n}{session}\PYG{p}{)}
+
+\PYG{k}{def} \PYG{n+nf}{fetch\PYGZus{}weather}\PYG{p}{(}\PYG{n}{start}\PYG{p}{,} \PYG{n}{end}\PYG{p}{):}
+    \PYG{n}{params} \PYG{o}{=} \PYG{p}{\PYGZob{}}
+        \PYG{l+s+s2}{\PYGZdq{}latitude\PYGZdq{}}\PYG{p}{:} \PYG{n}{SE3\PYGZus{}LAT}\PYG{p}{,}   \PYG{l+s+s2}{\PYGZdq{}longitude\PYGZdq{}}\PYG{p}{:} \PYG{n}{SE3\PYGZus{}LON}\PYG{p}{,}
+        \PYG{l+s+s2}{\PYGZdq{}hourly\PYGZdq{}}\PYG{p}{:}   \PYG{n}{\PYGZus{}VARIABLES}\PYG{p}{,}
+        \PYG{l+s+s2}{\PYGZdq{}start\PYGZus{}date\PYGZdq{}}\PYG{p}{:} \PYG{n}{start}\PYG{o}{.}\PYG{n}{date}\PYG{p}{()}\PYG{o}{.}\PYG{n}{isoformat}\PYG{p}{(),}
+        \PYG{l+s+s2}{\PYGZdq{}end\PYGZus{}date\PYGZdq{}}\PYG{p}{:}   \PYG{n}{end}\PYG{o}{.}\PYG{n}{date}\PYG{p}{()}\PYG{o}{.}\PYG{n}{isoformat}\PYG{p}{(),}
+        \PYG{l+s+s2}{\PYGZdq{}timezone\PYGZdq{}}\PYG{p}{:} \PYG{l+s+s2}{\PYGZdq{}UTC\PYGZdq{}}\PYG{p}{,}     \PYG{l+s+s2}{\PYGZdq{}wind\PYGZus{}speed\PYGZus{}unit\PYGZdq{}}\PYG{p}{:} \PYG{l+s+s2}{\PYGZdq{}ms\PYGZdq{}}\PYG{p}{,}
+    \PYG{p}{\PYGZcb{}}
+    \PYG{n}{responses} \PYG{o}{=} \PYG{n}{client}\PYG{o}{.}\PYG{n}{weather\PYGZus{}api}\PYG{p}{(}
+        \PYG{l+s+s2}{\PYGZdq{}https://archive\PYGZhy{}api.open\PYGZhy{}meteo.com/v1/archive\PYGZdq{}}\PYG{p}{,} \PYG{n}{params}\PYG{o}{=}\PYG{n}{params}
+    \PYG{p}{)}
+    \PYG{c+c1}{\PYGZsh{} Parse each variable → DataFrame[valid\PYGZus{}time, value]}
+    \PYG{o}{...}
+\end{Verbatim}

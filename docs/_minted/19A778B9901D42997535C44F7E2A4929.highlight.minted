@@ -1,0 +1,25 @@
+\begin{MintedVerbatim}[commandchars=\\\{\}]
+\PYG{n}{SE3\PYGZus{}ZONE} \PYG{o}{=} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{10Y1001A1001A46L}\PYG{l+s+s2}{\PYGZdq{}}          \PYG{c+c1}{\PYGZsh{} EIC code for SE3 bidding zone}
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{fetch\PYGZus{}prices}\PYG{p}{(}\PYG{n}{start}\PYG{p}{,} \PYG{n}{end}\PYG{p}{)}\PYG{p}{:}
+    \PYG{n}{api\PYGZus{}key} \PYG{o}{=} \PYG{n}{os}\PYG{o}{.}\PYG{n}{environ}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{ENTSOE\PYGZus{}API\PYGZus{}KEY}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}
+    \PYG{n}{client}  \PYG{o}{=} \PYG{n}{EntsoePandasClient}\PYG{p}{(}\PYG{n}{api\PYGZus{}key}\PYG{o}{=}\PYG{n}{api\PYGZus{}key}\PYG{p}{)}
+
+    \PYG{c+c1}{\PYGZsh{} Returns a pandas Series indexed by UTC timestamps}
+    \PYG{n}{series} \PYG{o}{=} \PYG{n}{client}\PYG{o}{.}\PYG{n}{query\PYGZus{}day\PYGZus{}ahead\PYGZus{}prices}\PYG{p}{(}
+        \PYG{n}{SE3\PYGZus{}ZONE}\PYG{p}{,}
+        \PYG{n}{start}\PYG{o}{=}\PYG{n}{pd}\PYG{o}{.}\PYG{n}{Timestamp}\PYG{p}{(}\PYG{n}{start}\PYG{p}{)}\PYG{p}{,}
+        \PYG{n}{end}\PYG{o}{=}\PYG{n}{pd}\PYG{o}{.}\PYG{n}{Timestamp}\PYG{p}{(}\PYG{n}{end}\PYG{p}{)}\PYG{p}{,}
+    \PYG{p}{)}
+
+    \PYG{n}{df} \PYG{o}{=} \PYG{n}{series}\PYG{o}{.}\PYG{n}{reset\PYGZus{}index}\PYG{p}{(}\PYG{p}{)}
+    \PYG{n}{df}\PYG{o}{.}\PYG{n}{columns} \PYG{o}{=} \PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{valid\PYGZus{}time}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{,} \PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{value}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}           \PYG{c+c1}{\PYGZsh{} tidy format for TimeDB}
+    \PYG{n}{df}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{valid\PYGZus{}time}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]} \PYG{o}{=} \PYG{n}{pd}\PYG{o}{.}\PYG{n}{to\PYGZus{}datetime}\PYG{p}{(}\PYG{n}{df}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{valid\PYGZus{}time}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{,} \PYG{n}{utc}\PYG{o}{=}\PYG{k+kc}{True}\PYG{p}{)}
+    \PYG{k}{return} \PYG{n}{df}\PYG{o}{.}\PYG{n}{dropna}\PYG{p}{(}\PYG{n}{subset}\PYG{o}{=}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{value}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{)}
+
+\PYG{k}{def}\PYG{+w}{ }\PYG{n+nf}{sync\PYGZus{}prices}\PYG{p}{(}\PYG{n}{start}\PYG{p}{,} \PYG{n}{end}\PYG{p}{)}\PYG{p}{:}
+    \PYG{n}{td} \PYG{o}{=} \PYG{n}{init\PYGZus{}schema}\PYG{p}{(}\PYG{p}{)}
+    \PYG{n}{df} \PYG{o}{=} \PYG{n}{fetch\PYGZus{}prices}\PYG{p}{(}\PYG{n}{start}\PYG{p}{,} \PYG{n}{end}\PYG{p}{)}
+    \PYG{n}{write\PYGZus{}series}\PYG{p}{(}\PYG{n}{td}\PYG{p}{,} \PYG{n}{SERIES}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{prices\PYGZus{}raw}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{,} \PYG{n}{df}\PYG{p}{,} \PYG{n}{retention}\PYG{o}{=}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{forever}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
+    \PYG{k}{return} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{df}\PYG{p}{)}
+\end{MintedVerbatim}

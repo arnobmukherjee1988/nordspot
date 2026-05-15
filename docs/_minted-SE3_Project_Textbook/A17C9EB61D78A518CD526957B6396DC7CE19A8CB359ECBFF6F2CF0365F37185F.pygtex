@@ -1,0 +1,4 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{n}{lags}     \PYG{o}{=} \PYG{p}{[}\PYG{l+m+mi}{23}\PYG{p}{,} \PYG{l+m+mi}{24}\PYG{p}{,} \PYG{l+m+mi}{25}\PYG{p}{,} \PYG{l+m+mi}{48}\PYG{p}{,} \PYG{l+m+mi}{72}\PYG{p}{,} \PYG{l+m+mi}{168}\PYG{p}{,} \PYG{l+m+mi}{336}\PYG{p}{]}
+\PYG{n}{lag\PYGZus{}feats} \PYG{o}{=} \PYG{p}{[}\PYG{n}{\PYGZus{}lag}\PYG{p}{(}\PYG{n}{price}\PYG{p}{,} \PYG{n}{h}\PYG{p}{)} \PYG{k}{for} \PYG{n}{h} \PYG{o+ow}{in} \PYG{n}{lags}\PYG{p}{]}   \PYG{c+c1}{\PYGZsh{} \PYGZus{}lag(s, h) = s.shift(h)}
+\end{Verbatim}

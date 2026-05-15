@@ -1,0 +1,7 @@
+cal["hour"]       = idx.hour          # 0-23
+cal["weekday"]    = idx.dayofweek     # 0=Monday, 6=Sunday
+cal["month"]      = idx.month         # 1-12
+cal["is_weekend"] = (idx.dayofweek >= 5).astype(int)   # Sat/Sun = 1
+cal["is_holiday"] = idx.normalize().map(               # Swedish public holidays
+    lambda d: int(d.date() in SE_HOLIDAYS))
+cal["hour_of_week"] = idx.dayofweek * 24 + idx.hour   # 0-167

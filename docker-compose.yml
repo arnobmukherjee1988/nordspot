@@ -1,0 +1,46 @@
+services:
+
+  # ── ClickHouse (bitemporal time-series store) ──────────────────────────────
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    container_name: se3_clickhouse
+    environment:
+      CLICKHOUSE_DB: se3db
+      CLICKHOUSE_USER: se3user
+      CLICKHOUSE_PASSWORD: se3password
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports:
+      - "8123:8123"   # HTTP interface (used by clickhouse-connect / TimeDB SDK)
+      - "9000:9000"   # Native TCP interface
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── Streamlit dashboard ────────────────────────────────────────────────────
+  app:
+    build: .
+    container_name: se3_app
+    # Load .env for ENTSOE_API_KEY, SE3_LAT/LON, SE3_TRAIN_START, MODEL_DIR.
+    # TIMEDB_CH_URL is overridden below so the app reaches ClickHouse via the
+    # Docker-internal hostname rather than localhost.
+    env_file: .env
+    environment:
+      TIMEDB_CH_URL: http://se3user:se3password@clickhouse:8123/se3db
+    ports:
+      - "8501:8501"
+    volumes:
+      # Bind-mount model artefacts so they persist across container restarts
+      # and are shared between `app` (dashboard) and one-off training runs.
+      - ./model:/app/model
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  clickhouse_data:
