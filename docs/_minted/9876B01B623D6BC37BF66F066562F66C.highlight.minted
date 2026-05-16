@@ -1,3 +1,0 @@
-\begin{MintedVerbatim}[commandchars=\\\{\}]
-.venv/bin/streamlit\PYG{+w}{ }run\PYG{+w}{ }dashboard/app.py
-\end{MintedVerbatim}

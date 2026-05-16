@@ -1,4 +1,0 @@
-\begin{MintedVerbatim}[commandchars=\\\{\}]
-python\PYG{+w}{ }\PYGZhy{}m\PYG{+w}{ }ml.train\PYG{+w}{           }\PYG{c+c1}{\PYGZsh{} auto\PYGZhy{}skip if \PYGZlt{} 7 days since last run}
-python\PYG{+w}{ }\PYGZhy{}m\PYG{+w}{ }ml.train\PYG{+w}{ }\PYGZhy{}\PYGZhy{}force\PYG{+w}{   }\PYG{c+c1}{\PYGZsh{} retrain regardless}
-\end{MintedVerbatim}

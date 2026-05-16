@@ -1,3 +1,0 @@
-\begin{MintedVerbatim}[commandchars=\\\{\}]
-python\PYG{+w}{ }\PYGZhy{}m\PYG{+w}{ }pipeline.fetch\PYGZus{}prices
-\end{MintedVerbatim}

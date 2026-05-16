@@ -1,6 +1,0 @@
-\begin{MintedVerbatim}[commandchars=\\\{\}]
-\PYG{n}{cal}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{hour\PYGZus{}x\PYGZus{}month}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}   \PYG{o}{=} \PYG{n}{cal}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{hour}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]} \PYG{o}{*} \PYG{n}{cal}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{month}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}
-\PYG{n}{cal}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{weekend\PYGZus{}x\PYGZus{}hour}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]} \PYG{o}{=} \PYG{n}{cal}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{is\PYGZus{}weekend}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]} \PYG{o}{*} \PYG{n}{cal}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{hour\PYGZus{}sin}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}
-\PYG{n}{temp\PYGZus{}x\PYGZus{}wind} \PYG{o}{=} \PYG{p}{(}\PYG{n}{temp} \PYG{o}{*} \PYG{n}{wind}\PYG{p}{)}\PYG{o}{.}\PYG{n}{rename}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{temp\PYGZus{}x\PYGZus{}wind}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
-\PYG{n}{temp\PYGZus{}x\PYGZus{}hour} \PYG{o}{=} \PYG{p}{(}\PYG{n}{temp} \PYG{o}{*} \PYG{n}{cal}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{hour}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{]}\PYG{p}{)}\PYG{o}{.}\PYG{n}{rename}\PYG{p}{(}\PYG{l+s+s2}{\PYGZdq{}}\PYG{l+s+s2}{temp\PYGZus{}x\PYGZus{}hour}\PYG{l+s+s2}{\PYGZdq{}}\PYG{p}{)}
-\end{MintedVerbatim}

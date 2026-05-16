@@ -1,9 +1,0 @@
-\begin{Verbatim}[commandchars=\\\{\}]
-\PYG{n}{cal}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}hour\PYGZdq{}}\PYG{p}{]}       \PYG{o}{=} \PYG{n}{idx}\PYG{o}{.}\PYG{n}{hour}          \PYG{c+c1}{\PYGZsh{} 0\PYGZhy{}23}
-\PYG{n}{cal}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}weekday\PYGZdq{}}\PYG{p}{]}    \PYG{o}{=} \PYG{n}{idx}\PYG{o}{.}\PYG{n}{dayofweek}     \PYG{c+c1}{\PYGZsh{} 0=Monday, 6=Sunday}
-\PYG{n}{cal}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}month\PYGZdq{}}\PYG{p}{]}      \PYG{o}{=} \PYG{n}{idx}\PYG{o}{.}\PYG{n}{month}         \PYG{c+c1}{\PYGZsh{} 1\PYGZhy{}12}
-\PYG{n}{cal}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}is\PYGZus{}weekend\PYGZdq{}}\PYG{p}{]} \PYG{o}{=} \PYG{p}{(}\PYG{n}{idx}\PYG{o}{.}\PYG{n}{dayofweek} \PYG{o}{\PYGZgt{}=} \PYG{l+m+mi}{5}\PYG{p}{)}\PYG{o}{.}\PYG{n}{astype}\PYG{p}{(}\PYG{n+nb}{int}\PYG{p}{)}   \PYG{c+c1}{\PYGZsh{} Sat/Sun = 1}
-\PYG{n}{cal}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}is\PYGZus{}holiday\PYGZdq{}}\PYG{p}{]} \PYG{o}{=} \PYG{n}{idx}\PYG{o}{.}\PYG{n}{normalize}\PYG{p}{()}\PYG{o}{.}\PYG{n}{map}\PYG{p}{(}               \PYG{c+c1}{\PYGZsh{} Swedish public holidays}
-    \PYG{k}{lambda} \PYG{n}{d}\PYG{p}{:} \PYG{n+nb}{int}\PYG{p}{(}\PYG{n}{d}\PYG{o}{.}\PYG{n}{date}\PYG{p}{()} \PYG{o+ow}{in} \PYG{n}{SE\PYGZus{}HOLIDAYS}\PYG{p}{))}
-\PYG{n}{cal}\PYG{p}{[}\PYG{l+s+s2}{\PYGZdq{}hour\PYGZus{}of\PYGZus{}week\PYGZdq{}}\PYG{p}{]} \PYG{o}{=} \PYG{n}{idx}\PYG{o}{.}\PYG{n}{dayofweek} \PYG{o}{*} \PYG{l+m+mi}{24} \PYG{o}{+} \PYG{n}{idx}\PYG{o}{.}\PYG{n}{hour}   \PYG{c+c1}{\PYGZsh{} 0\PYGZhy{}167}
-\end{Verbatim}

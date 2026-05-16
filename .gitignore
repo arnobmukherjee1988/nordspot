@@ -28,3 +28,6 @@ __pycache__/
 # IDE
 .vscode/
 .idea/
+
+# Personal / private docs (never push to GitHub)
+docs/

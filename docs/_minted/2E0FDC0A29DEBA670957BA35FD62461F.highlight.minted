@@ -1,4 +1,0 @@
-\begin{MintedVerbatim}[commandchars=\\\{\}]
-docker\PYGZhy{}compose\PYG{+w}{ }up\PYG{+w}{ }\PYGZhy{}d\PYG{+w}{        }\PYG{c+c1}{\PYGZsh{} start ClickHouse on ports 8123 (HTTP) and 9000 (TCP)}
-docker\PYGZhy{}compose\PYG{+w}{ }down\PYG{+w}{         }\PYG{c+c1}{\PYGZsh{} stop}
-\end{MintedVerbatim}
