@@ -22,3 +22,7 @@ properscoring              # CRPS computation (probabilistic forecast metric)
 streamlit==1.35.0
 plotly
 pytz
+
+# ── Visualisation (demo GIF generation) ───────────────────────────────────────
+matplotlib
+Pillow

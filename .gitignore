@@ -31,3 +31,11 @@ __pycache__/
 
 # Personal / private docs (never push to GitHub)
 docs/
+
+# Skye interview presentation (keep local only)
+Skye_Interview_Arnob_Mukherjee.*
+old_Skye_Interview_Arnob_Mukherjee.pdf
+demo.gif
+example.gif
+example_frame0.png
+make_demo_gif.py

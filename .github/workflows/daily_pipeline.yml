@@ -1,0 +1,134 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Daily Training Pipeline — NordPool SE3 Day-Ahead Price Forecasting
+#
+# Schedule : 10:00 UTC = noon Swedish summer time (CEST)
+# Steps    : fetch prices → fetch weather → train LightGBM → evaluate → upload
+#
+# Required secrets  (Settings → Secrets and variables → Actions → Secrets):
+#   ENTSOE_API_KEY   — ENTSO-E Transparency Platform API key
+#
+# Required variables (Settings → Secrets and variables → Actions → Variables):
+#   SE3_LAT          — Latitude for weather fetch  (e.g. 59.33)
+#   SE3_LON          — Longitude for weather fetch (e.g. 18.07)
+# ──────────────────────────────────────────────────────────────────────────────
+
+name: Daily Training Pipeline
+
+on:
+  schedule:
+    - cron: '0 10 * * *'      # 10:00 UTC — noon CEST (Swedish summer time)
+
+  workflow_dispatch:            # allow manual trigger from GitHub UI
+    inputs:
+      force_retrain:
+        description: 'Force retrain even if model is recent (ignores 7-day cache)'
+        type: boolean
+        default: false
+
+jobs:
+  train:
+    name: Fetch → Train → Evaluate
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    # ── ClickHouse service container ─────────────────────────────────────────
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:24.3
+        env:
+          CLICKHOUSE_DB: se3db
+          CLICKHOUSE_USER: se3user
+          CLICKHOUSE_PASSWORD: se3password
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+        ports:
+          - 8123:8123    # HTTP interface  (used by TimeDB SDK)
+          - 9000:9000    # Native TCP interface
+        options: >-
+          --health-cmd "wget --spider -q http://localhost:8123/ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+          --health-start-period 30s
+
+    # ── Shared environment ───────────────────────────────────────────────────
+    env:
+      TIMEDB_CH_URL: http://se3user:se3password@localhost:8123/se3db
+      MODEL_DIR: ./model
+
+    steps:
+
+      # ── 1. Checkout ──────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Python ────────────────────────────────────────────────────────
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # ── 3. Fetch price data ───────────────────────────────────────────────
+      - name: Fetch NordPool SE3 prices (ENTSO-E)
+        env:
+          ENTSOE_API_KEY: ${{ secrets.ENTSOE_API_KEY }}
+        run: python -m pipeline.fetch_prices
+
+      # ── 4. Fetch weather data ─────────────────────────────────────────────
+      - name: Fetch weather forecasts (Open-Meteo / SMHI)
+        env:
+          SE3_LAT: ${{ vars.SE3_LAT }}
+          SE3_LON: ${{ vars.SE3_LON }}
+        run: python -m pipeline.fetch_weather
+
+      # ── 5. Train ──────────────────────────────────────────────────────────
+      - name: Train LightGBM quantile models
+        run: |
+          FORCE_FLAG=""
+          if [ "${{ inputs.force_retrain }}" = "true" ]; then
+            FORCE_FLAG="--force"
+          fi
+          python -m ml.train $FORCE_FLAG
+
+      # ── 6. Upload model artefacts ─────────────────────────────────────────
+      - name: Upload model artefacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-${{ github.run_id }}
+          path: model/
+          retention-days: 30
+
+      # ── 7. Upload metrics log ─────────────────────────────────────────────
+      - name: Upload metrics and model log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metrics-${{ github.run_id }}
+          path: |
+            metrics.json
+            MODEL_LOG.md
+          retention-days: 90
+          if-no-files-found: warn
+
+      # ── 8. Job summary ────────────────────────────────────────────────────
+      - name: Write job summary
+        if: success()
+        run: |
+          echo "## Training pipeline — $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f metrics.json ]; then
+            echo "### Metrics" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat metrics.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f MODEL_LOG.md ]; then
+            echo "### Latest model log entry" >> $GITHUB_STEP_SUMMARY
+            tail -20 MODEL_LOG.md >> $GITHUB_STEP_SUMMARY
+          fi
