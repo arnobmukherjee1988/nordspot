@@ -82,8 +82,8 @@ jobs:
       # ── 4. Fetch weather data ─────────────────────────────────────────────
       - name: Fetch weather forecasts (Open-Meteo / SMHI)
         env:
-          SE3_LAT: ${{ vars.SE3_LAT }}
-          SE3_LON: ${{ vars.SE3_LON }}
+          SE3_LAT: ${{ vars.SE3_LAT || '59.33' }}   # Stockholm lat — override via repo variable
+          SE3_LON: ${{ vars.SE3_LON || '18.07' }}   # Stockholm lon — override via repo variable
         run: python -m pipeline.fetch_weather
 
       # ── 5. Train ──────────────────────────────────────────────────────────
