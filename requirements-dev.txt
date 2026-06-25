@@ -1,0 +1,15 @@
+# Development and test dependencies
+# Install with: pip install -r requirements-dev.txt
+# (after installing requirements.txt)
+
+# Testing
+pytest>=7.4
+pytest-cov>=4.1        # coverage reports
+pytest-asyncio>=0.23   # async test support for FastAPI
+
+# Code quality
+ruff>=0.4              # linter + formatter (replaces flake8, black, isort)
+pre-commit>=3.7        # run ruff on every git commit
+
+# Type checking
+mypy>=1.9
