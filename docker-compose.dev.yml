@@ -1,0 +1,36 @@
+# Lightweight dev stack — starts in ~5 seconds.
+# Use when developing pipeline or ML code locally.
+# Does NOT include MLflow, dashboard, or Airflow.
+#
+# Usage: docker compose -f docker-compose.dev.yml up -d
+
+services:
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    container_name: nordspot_clickhouse
+    environment:
+      CLICKHOUSE_DB: nordspot
+      CLICKHOUSE_USER: nordspot
+      CLICKHOUSE_PASSWORD: nordspot
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse-config.xml:/etc/clickhouse-server/config.d/memory.xml:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: nordspot_redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  clickhouse_data:
