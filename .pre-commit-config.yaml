@@ -1,0 +1,15 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.9
+    hooks:
+      - id: ruff          # lints and auto-fixes imports, style
+        args: [--fix]
+      - id: ruff-format   # formats code (replaces black)
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace   # removes trailing spaces
+      - id: end-of-file-fixer     # ensures files end with a newline
+      - id: check-yaml            # validates YAML files
+      - id: check-merge-conflict  # catches leftover merge conflict markers

@@ -1,0 +1,26 @@
+[project]
+name = "nordspot"
+version = "0.1.0"
+description = "Production-grade electricity spot price forecasting platform"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes (undefined names, unused imports)
+    "I",   # isort (import ordering)
+    "N",   # pep8 naming conventions
+]
+ignore = [
+    "E501",  # line too long — ruff formatter handles this
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
