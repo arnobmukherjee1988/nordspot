@@ -1,20 +1,19 @@
 services:
 
-  # ── ClickHouse (bitemporal time-series store) ──────────────────────────────
+  # ── ClickHouse (time-series store) ────────────────────────────────────────
   clickhouse:
     image: clickhouse/clickhouse-server:24.3
-    container_name: se3_clickhouse
+    container_name: nordspot_clickhouse
     environment:
-      CLICKHOUSE_DB: se3db
-      CLICKHOUSE_USER: se3user
-      CLICKHOUSE_PASSWORD: se3password
+      CLICKHOUSE_DB: nordspot
+      CLICKHOUSE_USER: nordspot
+      CLICKHOUSE_PASSWORD: nordspot
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     ports:
-      - "8123:8123"   # HTTP interface (used by clickhouse-connect / TimeDB SDK)
-      - "9000:9000"   # Native TCP interface
+      - "8123:8123"
+      - "9000:9000"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
-      # Memory cap: prevents ClickHouse from using >45% RAM on the 2 GB server
       - ./clickhouse-config.xml:/etc/clickhouse-server/config.d/memory.xml:ro
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
@@ -23,30 +22,77 @@ services:
       retries: 6
     restart: unless-stopped
 
+  # ── Redis (Feast online store) ─────────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: nordspot_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # ── MLflow tracking server ─────────────────────────────────────────────────
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.13.0
+    container_name: nordspot_mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:///mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+    restart: unless-stopped
+
   # ── Streamlit dashboard ────────────────────────────────────────────────────
-  app:
+  dashboard:
     build: .
-    container_name: se3_app
-    # Load .env for ENTSOE_API_KEY, SE3_LAT/LON, SE3_TRAIN_START, MODEL_DIR.
-    # TIMEDB_CH_URL is overridden below so the app reaches ClickHouse via the
-    # Docker-internal hostname rather than localhost.
+    container_name: nordspot_dashboard
     env_file: .env
     environment:
-      TIMEDB_CH_URL: http://se3user:se3password@clickhouse:8123/se3db
-      # Weather cache path — stored in a named volume so it survives restarts
+      TIMEDB_CH_URL: http://nordspot:nordspot@clickhouse:8123/nordspot
       WEATHER_CACHE_PATH: /app/data/.weather_cache.sqlite
     ports:
       - "8501:8501"
     volumes:
-      # Model artefacts: persist across container restarts, shared with training runs
       - ./model:/app/model
-      # Weather cache: persist SQLite cache so Open-Meteo isn't re-fetched on every restart
       - weather_cache:/app/data
     depends_on:
       clickhouse:
         condition: service_healthy
     restart: unless-stopped
 
+  # ── FastAPI serving (stub — implemented in Epic 5) ─────────────────────────
+  # api:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.api
+  #   container_name: nordspot_api
+  #   env_file: .env
+  #   ports:
+  #     - "8000:8000"
+  #   depends_on:
+  #     - redis
+  #   restart: unless-stopped
+
+  # ── Airflow (stub — implemented in Epic 2) ─────────────────────────────────
+  # airflow-webserver:
+  #   image: apache/airflow:2.9.1
+  #   container_name: nordspot_airflow_web
+  #   ports:
+  #     - "8080:8080"
+
 volumes:
   clickhouse_data:
+  redis_data:
+  mlflow_data:
   weather_cache:
