@@ -1,0 +1,36 @@
+# NordSpot zone configuration
+# This is the single source of truth for all bidding zone parameters.
+# To add a new zone: add an entry here. No code changes required.
+
+zones:
+  SE1:
+    entsoe_eic: "10Y1001A1001A44P"
+    name: "Luleå"
+    country: "SE"
+    lat: 65.58
+    lon: 22.15
+    timezone: "Europe/Stockholm"
+
+  SE2:
+    entsoe_eic: "10Y1001A1001A45N"
+    name: "Sundsvall"
+    country: "SE"
+    lat: 62.39
+    lon: 17.31
+    timezone: "Europe/Stockholm"
+
+  SE3:
+    entsoe_eic: "10Y1001A1001A46L"
+    name: "Stockholm"
+    country: "SE"
+    lat: 59.33
+    lon: 18.07
+    timezone: "Europe/Stockholm"
+
+  SE4:
+    entsoe_eic: "10Y1001A1001A47J"
+    name: "Malmö"
+    country: "SE"
+    lat: 55.60
+    lon: 13.00
+    timezone: "Europe/Stockholm"
