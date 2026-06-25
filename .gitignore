@@ -8,6 +8,9 @@
 model/*.pkl
 model/*.json
 
+# Local Bronze data lake (generated at runtime — never commit raw data)
+data/
+
 # Python cache
 __pycache__/
 *.pyc
