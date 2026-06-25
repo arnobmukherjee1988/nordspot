@@ -772,7 +772,7 @@ with tab_bt:
             "forecast that existed at **noon D-1** (SE3 gate closure). This is what a "
             "trading desk would have seen — no future data, guaranteed by the query itself."
         )
-        da_lgbm, da_lear = load_day_ahead_forecasts(str(from_date), str(to_date))
+        da_lgbm, da_lear = load_day_ahead_gate_closure(str(from_date), str(to_date))
 
         if da_lgbm is not None and da_lgbm.notna().sum() > 0:
             n_da    = int(da_lgbm.notna().sum())

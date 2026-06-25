@@ -14,11 +14,13 @@ services:
       - "9000:9000"   # Native TCP interface
     volumes:
       - clickhouse_data:/var/lib/clickhouse
+      # Memory cap: prevents ClickHouse from using >45% RAM on the 2 GB server
+      - ./clickhouse-config.xml:/etc/clickhouse-server/config.d/memory.xml:ro
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 6
     restart: unless-stopped
 
   # ── Streamlit dashboard ────────────────────────────────────────────────────
@@ -31,12 +33,15 @@ services:
     env_file: .env
     environment:
       TIMEDB_CH_URL: http://se3user:se3password@clickhouse:8123/se3db
+      # Weather cache path — stored in a named volume so it survives restarts
+      WEATHER_CACHE_PATH: /app/data/.weather_cache.sqlite
     ports:
       - "8501:8501"
     volumes:
-      # Bind-mount model artefacts so they persist across container restarts
-      # and are shared between `app` (dashboard) and one-off training runs.
+      # Model artefacts: persist across container restarts, shared with training runs
       - ./model:/app/model
+      # Weather cache: persist SQLite cache so Open-Meteo isn't re-fetched on every restart
+      - weather_cache:/app/data
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -44,3 +49,4 @@ services:
 
 volumes:
   clickhouse_data:
+  weather_cache:

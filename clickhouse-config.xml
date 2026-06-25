@@ -1,0 +1,8 @@
+<clickhouse>
+    <!--
+        Cap ClickHouse at ~45% of system RAM.
+        On a 2 GB Lightsail instance this leaves ~1.1 GB for Streamlit + OS.
+        Without this, ClickHouse defaults to 80% (~1.6 GB) and the server OOM-kills.
+    -->
+    <max_server_memory_usage_to_ram_ratio>0.45</max_server_memory_usage_to_ram_ratio>
+</clickhouse>

@@ -34,7 +34,8 @@ _SERIES_MAP = {
 
 
 def _build_client() -> openmeteo_requests.Client:
-    cache = requests_cache.CachedSession(".weather_cache", expire_after=3600)
+    _CACHE_PATH = os.getenv("WEATHER_CACHE_PATH", ".weather_cache.sqlite")
+    cache = requests_cache.CachedSession(_CACHE_PATH, expire_after=3600)
     session = retry(cache, retries=5, backoff_factor=0.2)
     return openmeteo_requests.Client(session=session)
 

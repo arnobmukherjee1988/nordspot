@@ -22,6 +22,34 @@ from pipeline.features import build_features
 from pipeline.store import write_series
 from ml.models import lgbm, lear
 
+
+# ── S3 artifact sync ──────────────────────────────────────────────────────────
+
+def _s3_upload_models() -> None:
+    """Upload model/ directory contents to S3 after training.
+
+    Requires AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION,
+    and S3_BUCKET in the environment. Silently skips if boto3 is not installed
+    or S3_BUCKET is not set — so local runs without S3 still work.
+    """
+    bucket = os.getenv("S3_BUCKET")
+    if not bucket:
+        return
+    try:
+        import boto3
+    except ImportError:
+        print("  [WARN] boto3 not installed — skipping S3 upload")
+        return
+
+    s3 = boto3.client("s3")
+    uploaded = 0
+    for path in MODEL_DIR.rglob("*"):
+        if path.is_file():
+            key = f"model/{path.relative_to(MODEL_DIR)}"
+            s3.upload_file(str(path), bucket, key)
+            uploaded += 1
+    print(f"  [OK] Uploaded {uploaded} model files to s3://{bucket}/model/")
+
 MODEL_DIR = Path(os.getenv("MODEL_DIR", "model"))
 MODEL_DIR.mkdir(exist_ok=True)
 
@@ -314,8 +342,16 @@ def _print_metrics_table(
 def train(start: datetime, end: datetime, note: str = "Routine training run") -> None:
     td = init_schema()
 
-    val_start  = end - timedelta(days=90)
-    train_end  = val_start
+    # ── Time splits ───────────────────────────────────────────────────────────
+    # Timeline:
+    #   |──── training data ────|──── 60d calibration ────|──── 30d test ────|
+    #   start              cal_start                  test_start             end
+    #
+    # Calibration and test are SEPARATE windows so coverage reported in
+    # metrics.json is on data the conformal correction ĉ never saw.
+    cal_start  = end - timedelta(days=90)   # 60-day calibration window start
+    test_start = end - timedelta(days=30)   # 30-day test window start
+    train_end  = cal_start
 
     print(f"Loading training features {start.date()} -> {train_end.date()} ...")
     train_df  = build_features(td, start, train_end)
@@ -343,54 +379,61 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
     print("\nTraining LEAR ...")
     lear.train(train_df)
 
-    print(f"\nEvaluating on holdout {val_start.date()} -> {end.date()} ...")
-    val_df   = build_features(td, val_start, end)
-    # apply_conformal=False: get raw model output so calibration sees true
-    # uncorrected intervals — otherwise the old ĉ is baked in and the new
-    # calibration always computes ĉ ≈ 0, destroying the correction.
-    lgbm_val = lgbm.predict(val_df, apply_conformal=False)
-    lear_val = lear.predict(val_df)
-    actuals  = val_df["price"]
+    # ── Load calibration and test windows ────────────────────────────────────
+    print(f"\nLoading calibration window {cal_start.date()} -> {test_start.date()} ...")
+    cal_df = build_features(td, cal_start, test_start)
 
-    # ── Pre-calibration metrics (raw quantile outputs) ────────────────────────
-    lgbm_m_raw = _compute_metrics(
-        actuals,
-        lgbm_val["lgbm_q05"], lgbm_val["lgbm_q50"], lgbm_val["lgbm_q95"],
-        test_from=str(val_start.date()), test_to=str(end.date()),
-    )
-    lear_m = _compute_metrics(
-        actuals,
-        lear_val["lear_q05"], lear_val["lear_q50"], lear_val["lear_q95"],
-        test_from=str(val_start.date()), test_to=str(end.date()),
-    )
+    print(f"Loading test window {test_start.date()} -> {end.date()} ...")
+    test_df = build_features(td, test_start, end)
 
-    # ── Conformal calibration (LightGBM only) ────────────────────────────────
-    # Fits the interval correction ĉ on the holdout so that future predictions
-    # achieve TARGET_COVERAGE marginal coverage.  Saves lgbm_conformal.pkl.
+    # ── Conformal calibration (LightGBM only) — on cal window ONLY ───────────
+    # Fits ĉ on 60-day calibration window.  The test window is untouched.
+    # apply_conformal=False: raw model output so calibration sees true
+    # uncorrected intervals — otherwise the old ĉ is baked in.
     print("\nCalibrating LightGBM prediction intervals (split conformal) ...")
-    mask = actuals.notna()
+    lgbm_cal_raw = lgbm.predict(cal_df, apply_conformal=False)
+    cal_actuals  = cal_df["price"]
+    cal_mask     = cal_actuals.notna()
     lgbm.calibrate(
-        actuals[mask],
-        lgbm_val["lgbm_q05"][mask],
-        lgbm_val["lgbm_q95"][mask],
+        cal_actuals[cal_mask],
+        lgbm_cal_raw["lgbm_q05"][cal_mask],
+        lgbm_cal_raw["lgbm_q95"][cal_mask],
     )
 
-    # Re-predict on holdout with calibration applied to get final metrics
-    lgbm_val_cal = lgbm.predict(val_df)
-    lgbm_m = _compute_metrics(
-        actuals,
-        lgbm_val_cal["lgbm_q05"], lgbm_val_cal["lgbm_q50"], lgbm_val_cal["lgbm_q95"],
-        test_from=str(val_start.date()), test_to=str(end.date()),
+    # ── Metrics on TEST window (clean — ĉ was fitted on cal, not test) ───────
+    print(f"\nEvaluating on test window {test_start.date()} -> {end.date()} ...")
+    lgbm_test_raw = lgbm.predict(test_df, apply_conformal=False)
+    lear_test     = lear.predict(test_df)
+    test_actuals  = test_df["price"]
+
+    # Pre-calibration coverage on test window (for reference)
+    lgbm_m_raw = _compute_metrics(
+        test_actuals,
+        lgbm_test_raw["lgbm_q05"], lgbm_test_raw["lgbm_q50"], lgbm_test_raw["lgbm_q95"],
+        test_from=str(test_start.date()), test_to=str(end.date()),
     )
-    # Store raw coverage alongside calibrated for reference
+
+    # Post-calibration metrics on test window — the headline numbers
+    lgbm_test_cal = lgbm.predict(test_df)          # now uses the freshly fitted ĉ
+    lgbm_m = _compute_metrics(
+        test_actuals,
+        lgbm_test_cal["lgbm_q05"], lgbm_test_cal["lgbm_q50"], lgbm_test_cal["lgbm_q95"],
+        test_from=str(test_start.date()), test_to=str(end.date()),
+    )
     lgbm_m["coverage_q5_q95_raw"] = lgbm_m_raw["coverage_q5_q95"]
+
+    lear_m = _compute_metrics(
+        test_actuals,
+        lear_test["lear_q05"], lear_test["lear_q50"], lear_test["lear_q95"],
+        test_from=str(test_start.date()), test_to=str(end.date()),
+    )
 
     new_metrics = {"lgbm": lgbm_m, "lear": lear_m}
     with open(metrics_path, "w") as f:
         json.dump(new_metrics, f, indent=2)
 
     _print_metrics_table(
-        title=f"Holdout metrics -- {val_start.date()} -> {end.date()}",
+        title=f"Test metrics -- {test_start.date()} -> {end.date()}  (calibrated on {cal_start.date()} -> {test_start.date()})",
         lgbm_m=lgbm_m,
         lear_m=lear_m,
         lgbm_raw_cov=lgbm_m_raw["coverage_q5_q95"],
@@ -402,7 +445,7 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
         run_time=run_time,
         train_start=str(start.date()),
         train_end=str(train_end.date()),
-        val_start=str(val_start.date()),
+        val_start=str(cal_start.date()),
         val_end=str(end.date()),
         n_train=labelled,
         prev_metrics=prev_metrics,
@@ -411,19 +454,31 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
         lgbm_best_iters=lgbm_best_iters,
     )
 
+    # Write forecasts to TimeDB — use the full 90-day window (cal + test)
+    # so the dashboard has predictions across the entire recent history.
     print("\nWriting forecasts to TimeDB ...")
-    _write_forecasts_to_timedb(td, lgbm_val, lear_val, knowledge_time=run_kt)
+    lgbm_full_cal = lgbm.predict(
+        build_features(td, cal_start, end)
+    )
+    lear_full     = lear.predict(
+        build_features(td, cal_start, end)
+    )
+    _write_forecasts_to_timedb(td, lgbm_full_cal, lear_full, knowledge_time=run_kt)
 
     trained_info = {
-        "trained_at":  run_kt.isoformat(),
-        "train_end":   str(train_end.date()),
-        "val_start":   str(val_start.date()),
-        "val_end":     str(end.date()),
+        "trained_at":   run_kt.isoformat(),
+        "train_end":    str(train_end.date()),
+        "cal_start":    str(cal_start.date()),
+        "test_start":   str(test_start.date()),
+        "val_end":      str(end.date()),
     }
     trained_path = MODEL_DIR / "trained_at.json"
     with open(trained_path, "w") as f:
         json.dump(trained_info, f, indent=2)
     print(f"  [OK] Training cache written -> {trained_path}")
+
+    print("\nUploading model artifacts to S3 ...")
+    _s3_upload_models()
 
     print(f"\n[OK] All models trained. Metrics saved to {metrics_path}")
 

@@ -1,28 +1,29 @@
 # ── Data pipeline ─────────────────────────────────────────────────────────────
-entsoe-py                  # ENTSO-E API client (prices, generation, flows)
-openmeteo-requests         # Open-Meteo weather API client
-requests-cache             # HTTP caching (avoids re-fetching same weather data)
-retry-requests             # Automatic retry on API failures
+entsoe-py==0.8.0           # ENTSO-E API client (prices, generation, flows)
+openmeteo-requests==1.7.5  # Open-Meteo weather API client
+requests-cache==1.3.2      # HTTP caching (avoids re-fetching same weather data)
+retry-requests==2.0.0      # Automatic retry on API failures
 
 # ── Database ──────────────────────────────────────────────────────────────────
 git+https://github.com/rebase-energy/timedb.git@b07591e4c1a172a55d271affe2063d49a4f50ce8  # TimeDB SDK (not the PyPI 'timedb' — different package)
-python-dotenv              # Load .env file into environment variables
+python-dotenv==1.2.2       # Load .env file into environment variables
+boto3>=1.34                # AWS SDK — used for S3 model artifact sync
 
 # ── ML ────────────────────────────────────────────────────────────────────────
-lightgbm                   # Primary forecasting model (quantile regression)
-scikit-learn               # Ridge baseline, LASSO (LEAR), metrics
-numpy
-pandas
-holidays                   # Swedish public holiday calendar
+lightgbm==4.6.0            # Primary forecasting model (quantile regression)
+scikit-learn==1.8.0        # Ridge baseline, LASSO (LEAR), metrics
+numpy==1.26.4
+pandas==2.3.3
+holidays==0.96             # Swedish public holiday calendar
 
 # ── Evaluation ────────────────────────────────────────────────────────────────
-properscoring              # CRPS computation (probabilistic forecast metric)
+properscoring==0.1         # CRPS computation (probabilistic forecast metric)
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 streamlit==1.35.0
-plotly
-pytz
+plotly==6.7.0
+pytz==2026.2
 
-# ── Visualisation (demo GIF generation) ───────────────────────────────────────
-matplotlib
-Pillow
+# ── Visualisation (only needed locally for demo GIF generation — skip on server) ──
+# matplotlib==3.10.9
+# Pillow==10.4.0

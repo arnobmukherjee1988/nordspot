@@ -32,6 +32,11 @@ __pycache__/
 # Personal / private docs (never push to GitHub)
 docs/
 
+# Platform plan — private notes, interview strategy, business context (NEVER push)
+PLATFORM_PLAN.md
+PLATFORM_PLAN_old.md
+PLATFORM_PLAN*.md
+
 # Skye interview presentation (keep local only)
 Skye_Interview_Arnob_Mukherjee.*
 old_Skye_Interview_Arnob_Mukherjee.pdf

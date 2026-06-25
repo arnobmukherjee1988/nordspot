@@ -36,11 +36,17 @@ COPY dashboard/ dashboard/
 # This placeholder ensures the directory exists if the mount is missing.
 RUN mkdir -p model
 
+# Entrypoint script: downloads model artifacts from S3 if model/ is empty
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 EXPOSE 8501
 
 # Liveness probe — Streamlit exposes a health endpoint at /_stcore/health
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
     CMD curl -sf http://localhost:8501/_stcore/health || exit 1
+
+ENTRYPOINT ["/entrypoint.sh"]
 
 # Run the dashboard on all interfaces so Docker port-mapping works
 CMD ["streamlit", "run", "dashboard/app.py", \
