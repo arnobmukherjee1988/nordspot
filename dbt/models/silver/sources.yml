@@ -1,0 +1,51 @@
+version: 2
+
+sources:
+  - name: nordspot
+    description: >
+      Raw Silver tables written by the NordSpot ingestion pipelines
+      (fetch_generation, fetch_load, fetch_crossborder).  These are the
+      ClickHouse tables created by db/schema.py via clickhouse-connect.
+    database: nordspot
+    tables:
+      - name: generation_actual
+        description: >
+          Hourly actual generation by fuel-type aggregate (total, wind, solar)
+          for each Swedish bidding zone.  Written by pipeline/fetch_generation.py.
+        columns:
+          - name: valid_time
+            description: Hour start (UTC).
+          - name: zone
+            description: ENTSO-E EIC code (e.g. 10Y1001A1001A46L for SE3).
+          - name: total_mw
+            description: Total generation across all fuel types (MW).
+          - name: wind_mw
+            description: Wind generation (onshore + offshore) (MW).
+          - name: solar_mw
+            description: Solar PV generation (MW).
+
+      - name: load_actual
+        description: >
+          Hourly actual electricity load per Swedish bidding zone.
+          Written by pipeline/fetch_load.py.
+        columns:
+          - name: valid_time
+            description: Hour start (UTC).
+          - name: zone
+            description: ENTSO-E EIC code.
+          - name: value_mw
+            description: Actual load (MW).
+
+      - name: crossborder_flows
+        description: >
+          Hourly physical cross-border flows between adjacent Swedish zones.
+          Written by pipeline/fetch_crossborder.py.
+        columns:
+          - name: valid_time
+            description: Hour start (UTC).
+          - name: from_zone
+            description: Exporting zone ENTSO-E EIC code.
+          - name: to_zone
+            description: Importing zone ENTSO-E EIC code.
+          - name: value_mw
+            description: Physical flow (MW).  Positive = export from from_zone.
