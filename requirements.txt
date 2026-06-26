@@ -17,11 +17,16 @@ numpy==1.26.4
 pandas==2.3.3
 holidays==0.96             # Swedish public holiday calendar
 
+# ── Data quality & transforms ─────────────────────────────────────────────────
+great-expectations>=0.18,<1.0  # Bronze-layer expectation suites (PandasDataset API)
+dbt-core>=1.11                 # SQL transform layer (Silver → Gold)
+dbt-clickhouse>=1.10           # dbt adapter for ClickHouse
+
 # ── Evaluation ────────────────────────────────────────────────────────────────
 properscoring==0.1         # CRPS computation (probabilistic forecast metric)
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
-streamlit==1.35.0
+streamlit>=1.40.0             # 1.40+ supports protobuf>=5 (required by dbt-core>=1.11)
 plotly==6.7.0
 pytz==2026.2
 

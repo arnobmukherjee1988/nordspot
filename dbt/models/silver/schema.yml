@@ -1,0 +1,77 @@
+version: 2
+
+models:
+  - name: silver_generation
+    description: >
+      Cleaned hourly generation by fuel-type aggregate per Swedish bidding zone.
+      Negative MW values and NULL mandatory fields are excluded.
+      Feeds Epic 3 Feast feature view: generation features.
+    columns:
+      - name: valid_time
+        description: Hour start (UTC).  Cast to DateTime.
+        tests:
+          - not_null
+      - name: zone
+        description: ENTSO-E EIC code identifying the bidding zone.
+        tests:
+          - not_null
+      - name: total_mw
+        description: Total generation across all fuel types (MW).
+        tests:
+          - not_null
+      - name: wind_mw
+        description: Wind generation (onshore + offshore) (MW).
+        tests:
+          - not_null
+      - name: solar_mw
+        description: Solar PV generation (MW).
+        tests:
+          - not_null
+      - name: dbt_loaded_at
+        description: Timestamp when this row was materialised by dbt.
+
+  - name: silver_load
+    description: >
+      Cleaned hourly actual electricity load per Swedish bidding zone.
+      Zero and negative load values are excluded.
+      Feeds Epic 3 Feast feature view: load features.
+    columns:
+      - name: valid_time
+        description: Hour start (UTC).  Cast to DateTime.
+        tests:
+          - not_null
+      - name: zone
+        description: ENTSO-E EIC code identifying the bidding zone.
+        tests:
+          - not_null
+      - name: value_mw
+        description: Actual load (MW).  Always positive.
+        tests:
+          - not_null
+      - name: dbt_loaded_at
+        description: Timestamp when this row was materialised by dbt.
+
+  - name: silver_crossborder
+    description: >
+      Cleaned hourly physical cross-border flows between adjacent Swedish zones.
+      value_mw can be negative (net import direction).
+      Feeds Epic 3 Feast feature view: cross-border features.
+    columns:
+      - name: valid_time
+        description: Hour start (UTC).  Cast to DateTime.
+        tests:
+          - not_null
+      - name: from_zone
+        description: Exporting zone ENTSO-E EIC code.
+        tests:
+          - not_null
+      - name: to_zone
+        description: Importing zone ENTSO-E EIC code.
+        tests:
+          - not_null
+      - name: value_mw
+        description: Physical flow (MW).  Positive = export, negative = import.
+        tests:
+          - not_null
+      - name: dbt_loaded_at
+        description: Timestamp when this row was materialised by dbt.

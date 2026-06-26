@@ -32,6 +32,12 @@ __pycache__/
 .vscode/
 .idea/
 
+# dbt — credentials and build artefacts (never commit)
+dbt/profiles.yml
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+
 # Personal / private docs (never push to GitHub)
 docs/
 
