@@ -1,12 +1,11 @@
 """
-Fetch day-ahead electricity prices from ENTSO-E.
+Fetch actual hourly load from ENTSO-E.
 
-Writes raw data to Bronze layer (GCS or local Parquet),
-then inserts into ClickHouse for querying.
+Writes Parquet to Bronze layer and inserts into ClickHouse.
 
 Usage:
-    python -m pipeline.fetch_prices --zone SE3
-    python -m pipeline.fetch_prices --zone ALL --start 2020-01-01 --end 2026-06-24
+    python -m pipeline.fetch_load --zone SE3
+    python -m pipeline.fetch_load --zone ALL --start 2020-01-01 --end 2026-06-24
 """
 
 import argparse
@@ -25,46 +24,53 @@ from pipeline.store import write_series
 load_dotenv()
 
 
-def fetch_prices(zone: ZoneConfig, start: datetime, end: datetime) -> pd.DataFrame:
-    """Fetch hourly DA prices for a zone. Returns DataFrame with [valid_time, value, zone]."""
+def fetch_load(zone: ZoneConfig, start: datetime, end: datetime) -> pd.DataFrame:
+    """Fetch hourly actual load for a zone.
+
+    Returns DataFrame with columns [valid_time, actual_load, zone].
+    """
     client = EntsoePandasClient(api_key=os.environ["ENTSOE_API_KEY"])
-    series = client.query_day_ahead_prices(
+    raw = client.query_load(
         zone.entsoe_eic,
         start=pd.Timestamp(start),
         end=pd.Timestamp(end),
     )
-    df = series.reset_index()
-    df.columns = ["valid_time", "value"]
+    df = raw.reset_index()
+    # entsoe-py returns index + 'Actual Load' column
+    df = df.rename(columns={df.columns[0]: "valid_time", df.columns[1]: "actual_load"})
     df["valid_time"] = pd.to_datetime(df["valid_time"], utc=True)
     df["zone"] = zone.entsoe_eic
-    return df.dropna(subset=["value"])
+    return df[["valid_time", "actual_load", "zone"]].dropna(subset=["actual_load"])
 
 
-def sync_prices(zone: ZoneConfig, start: datetime, end: datetime) -> int:
-    """Fetch prices → write to Bronze → write to ClickHouse. Returns row count."""
-    df = fetch_prices(zone, start, end)
+def sync_load(zone: ZoneConfig, start: datetime, end: datetime) -> int:
+    """Fetch load → Bronze Parquet → ClickHouse."""
+    df = fetch_load(zone, start, end)
 
-    # Bronze layer: one Parquet file per day
+    # Bronze: one Parquet per day
     writer = LakeWriter()
     for date, day_df in df.groupby(df["valid_time"].dt.date):
         writer.write(
             day_df.reset_index(drop=True),
-            data_type="prices",
+            data_type="load",
             zone=zone.entsoe_eic,
             date=date,
         )
 
-    # Silver layer: insert into ClickHouse
+    # Silver
     td = init_schema()
     write_series(
-        td, SERIES["prices_raw"], df[["valid_time", "value"]], retention="forever"
+        td,
+        SERIES["load_actual"],
+        df[["valid_time", "actual_load"]].rename(columns={"actual_load": "value"}),
+        retention="forever",
     )
 
     return len(df)
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Fetch ENTSO-E day-ahead prices")
+    parser = argparse.ArgumentParser(description="Fetch ENTSO-E actual load")
     parser.add_argument("--zone", default="SE3", help="Zone ID (e.g. SE3) or ALL")
     parser.add_argument("--start", default=None, help="Start date YYYY-MM-DD")
     parser.add_argument("--end", default=None, help="End date YYYY-MM-DD")
@@ -85,6 +91,6 @@ if __name__ == "__main__":
     )
 
     for zone_id, zone_cfg in zones.items():
-        print(f"Fetching prices: {zone_id} {start_dt.date()} -> {end_dt.date()} ...")
-        n = sync_prices(zone_cfg, start_dt, end_dt)
+        print(f"Fetching load: {zone_id} {start_dt.date()} -> {end_dt.date()} ...")
+        n = sync_load(zone_cfg, start_dt, end_dt)
         print(f"  [OK] {n} rows written")

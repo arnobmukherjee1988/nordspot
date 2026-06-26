@@ -6,6 +6,7 @@ retry-requests==2.0.0      # Automatic retry on API failures
 
 # ── Database ──────────────────────────────────────────────────────────────────
 git+https://github.com/rebase-energy/timedb.git@b07591e4c1a172a55d271affe2063d49a4f50ce8  # TimeDB SDK (not the PyPI 'timedb' — different package)
+clickhouse-connect>=0.7    # Native HTTP client for ClickHouse (zone-aware tables)
 python-dotenv==1.2.2       # Load .env file into environment variables
 boto3>=1.34                # AWS SDK — used for S3 model artifact sync
 
