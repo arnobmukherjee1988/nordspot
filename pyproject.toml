@@ -29,4 +29,7 @@ filterwarnings = [
     # GE 0.18.x triggers marshmallow's ChangedInMarshmallow4Warning internally.
     # Unfixable from our side — suppress by message pattern.
     "ignore:.*Number.*field should not be instantiated.*",
+    # holidays v0.x emits FutureIncompatibilityWarning at import time.
+    # Filter by module origin — avoids .match() vs leading-newline regex issues.
+    "ignore::Warning:holidays",
 ]
