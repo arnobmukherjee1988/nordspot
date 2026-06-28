@@ -1,3 +1,3 @@
-from . import catboost, lear, lgbm, xgboost
+from . import catboost, ensemble, lear, lgbm, xgboost
 
-__all__ = ["lgbm", "lear", "xgboost", "catboost"]
+__all__ = ["lgbm", "lear", "xgboost", "catboost", "ensemble"]

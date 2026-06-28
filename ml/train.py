@@ -31,6 +31,7 @@ from db.schema import SERIES, init_schema
 from ml.explain import log_shap_artifacts
 from ml.mlflow_setup import EXPERIMENTS, get_tracking_uri
 from ml.models import catboost as cat_model
+from ml.models import ensemble as ens_model
 from ml.models import lear, lgbm
 from ml.models import xgboost as xgb_model
 from pipeline.features import build_features
@@ -789,6 +790,91 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
             print(
                 f"\n[MLFLOW] CatBoost run {cat_active.info.run_id[:8]}... "
                 f"logged to '{EXPERIMENTS['catboost']}'"
+            )
+
+    # ── Ensemble: separate MLflow run in nordspot-ensemble experiment ──────────
+    # Stacks calibrated LGBM, XGBoost, and CatBoost predictions via Ridge.
+    # No new training data required — base models are already saved to disk.
+    # train_df / cal_df / test_df / test_actuals / test_start are in scope
+    # from the LGBM block above (Python with-blocks do not create a new scope).
+    mlflow.set_experiment(EXPERIMENTS["ensemble"])
+    with mlflow.start_run(run_name=f"ensemble-{end.date()}"):
+        mlflow.set_tags(
+            {
+                "note": note,
+                "zone": "SE3",
+                "train_start": str(start.date()),
+                "run_end": str(end.date()),
+            }
+        )
+
+        # Generate calibrated base model predictions on cal and test windows.
+        # Each predict() loads saved model files — written by the blocks above.
+        print("\nGenerating base model predictions for ensemble meta-learner ...")
+        base_cal_preds = pd.concat(
+            [
+                lgbm.predict(cal_df),  # lgbm_q05, lgbm_q50, lgbm_q95
+                xgb_model.predict(cal_df),  # xgb_q05,  xgb_q50,  xgb_q95
+                cat_model.predict(cal_df),  # cat_q05,  cat_q50,  cat_q95
+            ],
+            axis=1,
+        )
+        base_test_preds = pd.concat(
+            [
+                lgbm.predict(test_df),
+                xgb_model.predict(test_df),
+                cat_model.predict(test_df),
+            ],
+            axis=1,
+        )
+
+        print("\nTraining Ridge meta-learner (one per quantile) ...")
+        ens_models = ens_model.train(base_cal_preds, cal_df["price"])
+
+        # Evaluate on held-out test window
+        ens_preds = ens_model.predict(base_test_preds)
+        ens_m = _compute_metrics(
+            test_actuals,
+            ens_preds["ens_q05"],
+            ens_preds["ens_q50"],
+            ens_preds["ens_q95"],
+            test_from=str(test_start.date()),
+            test_to=str(end.date()),
+        )
+
+        # MLflow: log Ridge coefficients per quantile for interpretability
+        for q_name, model in ens_models.items():
+            try:
+                for feat, coef in zip(ens_model._Q_FEATURES[q_name], model.coef_):
+                    mlflow.log_param(f"ens_coef_{q_name}_{feat}", round(float(coef), 4))
+            except Exception as exc:  # noqa: BLE001
+                print(f"  [WARN] Coefficient logging skipped for {q_name}: {exc}")
+
+        mlflow.log_params(
+            {
+                "ens_meta_alpha": ens_model._RIDGE_ALPHA,
+                "ens_base_models": "lgbm,xgboost,catboost",
+                "ens_meta_features_per_quantile": 3,
+            }
+        )
+
+        mlflow.log_metrics(
+            {
+                "ens_mae": ens_m["mae"],
+                "ens_rmse": ens_m["rmse"],
+                "ens_mape": ens_m["mape"],
+                "ens_coverage": ens_m["coverage_q5_q95"],
+                "ens_spike_mae": ens_m["spike_mae"],
+                "ens_night_mae": ens_m["night_mae"],
+                "ens_peak_mae": ens_m["peak_mae"],
+            }
+        )
+
+        ens_active = mlflow.active_run()
+        if ens_active:
+            print(
+                f"\n[MLFLOW] Ensemble run {ens_active.info.run_id[:8]}... "
+                f"logged to '{EXPERIMENTS['ensemble']}'"
             )
 
 

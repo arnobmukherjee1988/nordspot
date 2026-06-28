@@ -95,6 +95,19 @@ def _fake_cat_preds(df: pd.DataFrame, **_kw: object) -> pd.DataFrame:
     )
 
 
+def _fake_ens_preds(base_preds: pd.DataFrame, **_kw: object) -> pd.DataFrame:
+    rng = np.random.default_rng(5)
+    n = len(base_preds)
+    return pd.DataFrame(
+        {
+            "ens_q05": rng.uniform(10, 60, n),
+            "ens_q50": rng.uniform(30, 120, n),
+            "ens_q95": rng.uniform(100, 250, n),
+        },
+        index=base_preds.index,
+    )
+
+
 def _fake_fi() -> pd.DataFrame:
     """Minimal feature-importance DataFrame for lgbm.feature_importance mock."""
     return pd.DataFrame({"mean": [1.0, 0.5]}, index=["price_lag24h", "hour"])
@@ -177,6 +190,16 @@ def _run_train(note: str = "test run") -> None:
         patch("ml.models.catboost.predict", side_effect=_fake_cat_preds),
         patch("ml.models.catboost.calibrate", return_value=0.2),
         patch("mlflow.catboost.log_model"),
+        # ── Ensemble (Story 4.6) ──────────────────────────────────────────────
+        patch(
+            "ml.models.ensemble.train",
+            return_value={
+                "q05": MagicMock(coef_=[0.3, 0.3, 0.4], intercept_=0.0),
+                "q50": MagicMock(coef_=[0.4, 0.3, 0.3], intercept_=0.0),
+                "q95": MagicMock(coef_=[0.3, 0.4, 0.3], intercept_=0.0),
+            },
+        ),
+        patch("ml.models.ensemble.predict", side_effect=_fake_ens_preds),
     ]
 
     with ExitStack() as stack:
@@ -345,4 +368,37 @@ def test_catboost_logs_metrics(local_mlflow):
     metrics = client.search_runs(experiment_ids=[exp.experiment_id])[0].data.metrics
     for key in ("cat_mae", "cat_rmse", "cat_coverage", "cat_spike_mae"):
         assert key in metrics, f"Missing CatBoost metric: {key}"
+        assert isinstance(metrics[key], float), f"{key} should be float"
+
+
+# ── Ensemble MLflow tests (Story 4.6) ────────────────────────────────────────
+
+
+def test_ensemble_run_created(local_mlflow):
+    """train() must also create a run in the nordspot-ensemble experiment."""
+    _run_train()
+    client = mlflow.tracking.MlflowClient(tracking_uri=local_mlflow)
+    exp = client.get_experiment_by_name(EXPERIMENTS["ensemble"])
+    assert exp is not None, f"Experiment '{EXPERIMENTS['ensemble']}' was not created"
+    runs = client.search_runs(experiment_ids=[exp.experiment_id])
+    assert len(runs) == 1, f"Expected 1 ensemble run, found {len(runs)}"
+
+
+def test_ensemble_run_status_finished(local_mlflow):
+    """Ensemble run must complete cleanly — status FINISHED."""
+    _run_train()
+    client = mlflow.tracking.MlflowClient(tracking_uri=local_mlflow)
+    exp = client.get_experiment_by_name(EXPERIMENTS["ensemble"])
+    run = client.search_runs(experiment_ids=[exp.experiment_id])[0]
+    assert run.info.status == "FINISHED", f"Ensemble run status: {run.info.status}"
+
+
+def test_ensemble_logs_metrics(local_mlflow):
+    """Key ensemble test-window metrics must be present and numeric."""
+    _run_train()
+    client = mlflow.tracking.MlflowClient(tracking_uri=local_mlflow)
+    exp = client.get_experiment_by_name(EXPERIMENTS["ensemble"])
+    metrics = client.search_runs(experiment_ids=[exp.experiment_id])[0].data.metrics
+    for key in ("ens_mae", "ens_rmse", "ens_coverage", "ens_spike_mae"):
+        assert key in metrics, f"Missing ensemble metric: {key}"
         assert isinstance(metrics[key], float), f"{key} should be float"
