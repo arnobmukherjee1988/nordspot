@@ -1,5 +1,6 @@
 """Train all models on historical SE3 data stored in TimeDB.
 Saves model/metrics.json and appends an entry to model/MODEL_LOG.md.
+Every run is tracked in MLflow (experiment: nordspot-lgbm).
 
 Usage:
     python -m ml.train
@@ -7,23 +8,31 @@ Usage:
     python -m ml.train --note "Added 336h lag, recency weights"
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 
+import mlflow
+import mlflow.lightgbm as mlflow_lgbm
 import numpy as np
 import pandas as pd
-from timedb import TimeDBClient
 
-from db.schema import init_schema, SERIES
+if TYPE_CHECKING:
+    from timedb import TimeDBClient
+
+from db.schema import SERIES, init_schema
+from ml.mlflow_setup import EXPERIMENTS, get_tracking_uri
+from ml.models import lear, lgbm
 from pipeline.features import build_features
 from pipeline.store import write_series
-from ml.models import lgbm, lear
-
 
 # ── S3 artifact sync ──────────────────────────────────────────────────────────
+
 
 def _s3_upload_models() -> None:
     """Upload model/ directory contents to S3 after training.
@@ -36,7 +45,7 @@ def _s3_upload_models() -> None:
     if not bucket:
         return
     try:
-        import boto3
+        import boto3  # noqa: PLC0415
     except ImportError:
         print("  [WARN] boto3 not installed — skipping S3 upload")
         return
@@ -50,11 +59,13 @@ def _s3_upload_models() -> None:
             uploaded += 1
     print(f"  [OK] Uploaded {uploaded} model files to s3://{bucket}/model/")
 
+
 MODEL_DIR = Path(os.getenv("MODEL_DIR", "model"))
 MODEL_DIR.mkdir(exist_ok=True)
 
 
 # ── Training cache ────────────────────────────────────────────────────────────
+
 
 def _should_skip_training(td: TimeDBClient) -> bool:
     """Return True if models are fresh enough that retraining can be skipped.
@@ -65,7 +76,7 @@ def _should_skip_training(td: TimeDBClient) -> bool:
     Stale models are worse than no models, so we err on the side of retraining.
     """
     trained_path = MODEL_DIR / "trained_at.json"
-    model_files  = [MODEL_DIR / "lgbm_q50.pkl", MODEL_DIR / "lear_h00.pkl"]
+    model_files = [MODEL_DIR / "lgbm_q50.pkl", MODEL_DIR / "lear_h00.pkl"]
 
     if not all(p.exists() for p in [trained_path, *model_files]):
         return False
@@ -128,12 +139,13 @@ def _write_forecasts_to_timedb(
         if s.empty:
             continue
         df_out = pd.DataFrame({"valid_time": s.index, "value": s.values})
-        write_series(td, SERIES[name], df_out, retention="forever",
-                     knowledge_time=knowledge_time)
+        write_series(
+            td, SERIES[name], df_out, retention="forever", knowledge_time=knowledge_time
+        )
         n_written += len(df_out)
 
     lgbm_rows = lgbm_val["lgbm_q50"].notna().sum()
-    lear_rows  = lear_val["lear_q50"].notna().sum()
+    lear_rows = lear_val["lear_q50"].notna().sum()
     print(
         f"  [OK] Forecasts written to TimeDB  "
         f"(LGBM: {lgbm_rows} rows x 3 quantiles, "
@@ -144,6 +156,7 @@ def _write_forecasts_to_timedb(
 
 # ── Metrics computation ───────────────────────────────────────────────────────
 
+
 def _compute_metrics(
     actuals: pd.Series,
     q05: pd.Series,
@@ -152,27 +165,31 @@ def _compute_metrics(
     test_from: str,
     test_to: str,
 ) -> dict:
-    mask    = actuals.notna() & q50.notna()
-    y       = actuals[mask].values
-    f50     = q50[mask].values
-    f05     = q05[mask].values
-    f95     = q95[mask].values
-    hrs     = actuals[mask].index
+    mask = actuals.notna() & q50.notna()
+    y = actuals[mask].values
+    f50 = q50[mask].values
+    f05 = q05[mask].values
+    f95 = q95[mask].values
+    hrs = actuals[mask].index
 
-    err     = f50 - y
+    err = f50 - y
     abs_err = np.abs(err)
-    mae     = float(abs_err.mean())
-    rmse    = float(np.sqrt((err ** 2).mean()))
+    mae = float(abs_err.mean())
+    rmse = float(np.sqrt((err**2).mean()))
 
     nonzero = np.abs(y) >= 1.0
-    mape    = float(np.mean(np.abs(err[nonzero] / y[nonzero])) * 100) if nonzero.sum() else 0.0
+    mape = (
+        float(np.mean(np.abs(err[nonzero] / y[nonzero])) * 100)
+        if nonzero.sum()
+        else 0.0
+    )
 
-    inside   = (y >= f05) & (y <= f95)
+    inside = (y >= f05) & (y <= f95)
     coverage = float(inside.mean() * 100)
 
     spike_mask = y > 100
-    spike_mae  = float(abs_err[spike_mask].mean()) if spike_mask.sum() else 0.0
-    n_spikes   = int(spike_mask.sum())
+    spike_mae = float(abs_err[spike_mask].mean()) if spike_mask.sum() else 0.0
+    n_spikes = int(spike_mask.sum())
 
     hour_series = pd.Series(abs_err, index=hrs)
     mae_by_hour = {
@@ -181,29 +198,30 @@ def _compute_metrics(
     }
 
     night_hours = [0, 1, 2, 3, 4, 5, 23]
-    peak_hours  = [8, 9, 17, 18, 19, 20]
-    night_mask  = pd.Series(hrs.hour).isin(night_hours).values
-    peak_mask   = pd.Series(hrs.hour).isin(peak_hours).values
-    night_mae   = float(abs_err[night_mask].mean()) if night_mask.sum() else 0.0
-    peak_mae    = float(abs_err[peak_mask].mean())  if peak_mask.sum()  else 0.0
+    peak_hours = [8, 9, 17, 18, 19, 20]
+    night_mask = pd.Series(hrs.hour).isin(night_hours).values
+    peak_mask = pd.Series(hrs.hour).isin(peak_hours).values
+    night_mae = float(abs_err[night_mask].mean()) if night_mask.sum() else 0.0
+    peak_mae = float(abs_err[peak_mask].mean()) if peak_mask.sum() else 0.0
 
     return {
         "test_from": test_from,
-        "test_to":   test_to,
-        "n_hours":   int(mask.sum()),
-        "mae":       mae,
-        "rmse":      rmse,
-        "mape":      mape,
+        "test_to": test_to,
+        "n_hours": int(mask.sum()),
+        "mae": mae,
+        "rmse": rmse,
+        "mape": mape,
         "coverage_q5_q95": coverage,
         "spike_mae": spike_mae,
-        "n_spikes":  n_spikes,
+        "n_spikes": n_spikes,
         "mae_by_hour": mae_by_hour,
         "night_mae": night_mae,
-        "peak_mae":  peak_mae,
+        "peak_mae": peak_mae,
     }
 
 
 # ── Model log ─────────────────────────────────────────────────────────────────
+
 
 def _append_log(
     run_time: str,
@@ -237,10 +255,10 @@ def _append_log(
         )
 
     header = "| Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |"
-    sep    = "|---|---|---|---|---|---|---|"
+    sep = "|---|---|---|---|---|---|---|"
 
     entry_lines = [
-        f"\n---\n",
+        "\n---\n",
         f"## Run — {run_time} UTC\n",
         f"**Train:** {train_start} -> {train_end}  ({n_train:,} labelled rows)  ",
         f"**Holdout:** {val_start} -> {val_end}\n",
@@ -250,7 +268,8 @@ def _append_log(
     if prev_metrics:
         entry_lines += [
             "### Before\n",
-            header, sep,
+            header,
+            sep,
             _fmt(prev_metrics, "lgbm"),
             _fmt(prev_metrics, "lear"),
             "",
@@ -258,7 +277,8 @@ def _append_log(
 
     entry_lines += [
         "### After\n",
-        header, sep,
+        header,
+        sep,
         _fmt(new_metrics, "lgbm"),
         _fmt(new_metrics, "lear"),
         "",
@@ -271,8 +291,12 @@ def _append_log(
         lear_curr = new_metrics.get("lear", {})
         d_lgbm_mae = lgbm_curr.get("mae", 0) - lgbm_prev.get("mae", 0)
         d_lear_mae = lear_curr.get("mae", 0) - lear_prev.get("mae", 0)
-        d_lgbm_cov = lgbm_curr.get("coverage_q5_q95", 0) - lgbm_prev.get("coverage_q5_q95", 0)
-        d_lear_cov = lear_curr.get("coverage_q5_q95", 0) - lear_prev.get("coverage_q5_q95", 0)
+        d_lgbm_cov = lgbm_curr.get("coverage_q5_q95", 0) - lgbm_prev.get(
+            "coverage_q5_q95", 0
+        )
+        d_lear_cov = lear_curr.get("coverage_q5_q95", 0) - lear_prev.get(
+            "coverage_q5_q95", 0
+        )
 
         def _delta(v: float, reverse: bool = False) -> str:
             sign = "+" if v > 0 else "-"
@@ -282,8 +306,8 @@ def _append_log(
 
         entry_lines += [
             "### Delta vs previous run\n",
-            f"| | MAE delta | Coverage delta |",
-            f"|---|---|---|",
+            "| | MAE delta | Coverage delta |",
+            "|---|---|---|",
             f"| LightGBM | {_delta(d_lgbm_mae)} | {_delta(d_lgbm_cov, reverse=True)} |",
             f"| LEAR | {_delta(d_lear_mae)} | {_delta(d_lear_cov, reverse=True)} |",
             "",
@@ -291,7 +315,9 @@ def _append_log(
 
     if lgbm_best_iters:
         iters_str = ", ".join(str(i) for i in lgbm_best_iters)
-        entry_lines.append(f"**LightGBM early stopping best iterations:** {iters_str}\n")
+        entry_lines.append(
+            f"**LightGBM early stopping best iterations:** {iters_str}\n"
+        )
 
     with open(log_path, "a", encoding="utf-8") as f:
         f.write("\n".join(entry_lines) + "\n")
@@ -301,6 +327,7 @@ def _append_log(
 
 # ── Console results table ─────────────────────────────────────────────────────
 
+
 def _print_metrics_table(
     title: str,
     lgbm_m: dict,
@@ -308,10 +335,10 @@ def _print_metrics_table(
     lgbm_raw_cov: float | None = None,
 ) -> None:
     """Print a box-drawing results table matching the run_eval output style."""
-    W = 78
-    print(f"\n{'-' * W}")
+    width = 78
+    print(f"\n{'-' * width}")
     print(f"  {title}")
-    print(f"{'-' * W}")
+    print(f"{'-' * width}")
     print(
         f"  {'Model':8s}  {'MAE':>7s}  {'RMSE':>7s}  "
         f"{'Coverage':>14s}  {'Spike MAE':>10s}  {'Night MAE':>10s}  {'Peak MAE':>10s}"
@@ -334,153 +361,240 @@ def _print_metrics_table(
         f"{lear_cov:>14s}  {lear_m['spike_mae']:10.2f}  "
         f"{lear_m['night_mae']:10.2f}  {lear_m['peak_mae']:10.2f}"
     )
-    print(f"{'-' * W}")
+    print(f"{'-' * width}")
+
+
+# ── MLflow: feature importance plot ───────────────────────────────────────────
+
+
+def _log_feature_importance() -> None:
+    """Log LightGBM feature importance bar chart to the active MLflow run.
+
+    Silently skips if matplotlib is not installed or no trained models exist
+    (e.g. unit tests that mock lgbm.train).
+    """
+    try:
+        import matplotlib.pyplot as plt  # noqa: PLC0415
+
+        fi = lgbm.feature_importance(top_n=20)
+        fig, ax = plt.subplots(figsize=(8, 6))
+        fi["mean"].sort_values().plot(kind="barh", ax=ax)
+        ax.set_title("LightGBM Feature Importance (gain, mean across quantiles)")
+        ax.set_xlabel("Importance (gain)")
+        plt.tight_layout()
+        mlflow.log_figure(fig, "feature_importance.png")
+        plt.close(fig)
+    except Exception as exc:  # noqa: BLE001
+        print(f"  [WARN] Feature importance plot skipped: {exc}")
 
 
 # ── Main training routine ─────────────────────────────────────────────────────
 
+
 def train(start: datetime, end: datetime, note: str = "Routine training run") -> None:
-    td = init_schema()
+    # ── MLflow: set experiment ────────────────────────────────────────────────
+    mlflow.set_tracking_uri(get_tracking_uri())
+    mlflow.set_experiment(EXPERIMENTS["lgbm"])
 
-    # ── Time splits ───────────────────────────────────────────────────────────
-    # Timeline:
-    #   |──── training data ────|──── 60d calibration ────|──── 30d test ────|
-    #   start              cal_start                  test_start             end
-    #
-    # Calibration and test are SEPARATE windows so coverage reported in
-    # metrics.json is on data the conformal correction ĉ never saw.
-    cal_start  = end - timedelta(days=90)   # 60-day calibration window start
-    test_start = end - timedelta(days=30)   # 30-day test window start
-    train_end  = cal_start
-
-    print(f"Loading training features {start.date()} -> {train_end.date()} ...")
-    train_df  = build_features(td, start, train_end)
-    labelled  = int(train_df["price"].notna().sum())
-    print(f"  {len(train_df):,} rows, {labelled:,} labelled ({labelled/len(train_df)*100:.1f} %)")
-
-    if labelled < 24 * 30:
-        raise RuntimeError(
-            f"Only {labelled} labelled rows — need at least 720. Is ENTSO-E data synced?"
+    with mlflow.start_run(run_name=f"lgbm-{end.date()}"):
+        mlflow.set_tags(
+            {
+                "note": note,
+                "zone": "SE3",
+                "train_start": str(start.date()),
+                "run_end": str(end.date()),
+            }
         )
 
-    # Read previous metrics (for delta comparison in log)
-    metrics_path = MODEL_DIR / "metrics.json"
-    prev_metrics = None
-    if metrics_path.exists():
-        with open(metrics_path) as f:
-            prev_metrics = json.load(f)
+        td = init_schema()
 
-    print("\nTraining LightGBM ...")
-    lgbm_models = lgbm.train(train_df)
-    lgbm_best_iters = [
-        (m.best_iteration_ or m.n_estimators) for m in lgbm_models.values()
-    ]
+        # ── Time splits ───────────────────────────────────────────────────────
+        # Timeline:
+        #   |──── training data ────|──── 60d calibration ────|──── 30d test ────|
+        #   start              cal_start                  test_start             end
+        cal_start = end - timedelta(days=90)
+        test_start = end - timedelta(days=30)
+        train_end = cal_start
 
-    print("\nTraining LEAR ...")
-    lear.train(train_df)
+        print(f"Loading training features {start.date()} -> {train_end.date()} ...")
+        train_df = build_features(td, start, train_end)
+        labelled = int(train_df["price"].notna().sum())
+        print(
+            f"  {len(train_df):,} rows, {labelled:,} labelled "
+            f"({labelled / len(train_df) * 100:.1f} %)"
+        )
 
-    # ── Load calibration and test windows ────────────────────────────────────
-    print(f"\nLoading calibration window {cal_start.date()} -> {test_start.date()} ...")
-    cal_df = build_features(td, cal_start, test_start)
+        if labelled < 24 * 30:
+            raise RuntimeError(
+                f"Only {labelled} labelled rows — need at least 720. "
+                "Is ENTSO-E data synced?"
+            )
 
-    print(f"Loading test window {test_start.date()} -> {end.date()} ...")
-    test_df = build_features(td, test_start, end)
+        # Read previous metrics (for delta comparison in log)
+        metrics_path = MODEL_DIR / "metrics.json"
+        prev_metrics = None
+        if metrics_path.exists():
+            with open(metrics_path) as f:
+                prev_metrics = json.load(f)
 
-    # ── Conformal calibration (LightGBM only) — on cal window ONLY ───────────
-    # Fits ĉ on 60-day calibration window.  The test window is untouched.
-    # apply_conformal=False: raw model output so calibration sees true
-    # uncorrected intervals — otherwise the old ĉ is baked in.
-    print("\nCalibrating LightGBM prediction intervals (split conformal) ...")
-    lgbm_cal_raw = lgbm.predict(cal_df, apply_conformal=False)
-    cal_actuals  = cal_df["price"]
-    cal_mask     = cal_actuals.notna()
-    lgbm.calibrate(
-        cal_actuals[cal_mask],
-        lgbm_cal_raw["lgbm_q05"][cal_mask],
-        lgbm_cal_raw["lgbm_q95"][cal_mask],
-    )
+        print("\nTraining LightGBM ...")
+        lgbm_models = lgbm.train(train_df)
+        lgbm_best_iters = [
+            (m.best_iteration_ or m.n_estimators) for m in lgbm_models.values()
+        ]
 
-    # ── Metrics on TEST window (clean — ĉ was fitted on cal, not test) ───────
-    print(f"\nEvaluating on test window {test_start.date()} -> {end.date()} ...")
-    lgbm_test_raw = lgbm.predict(test_df, apply_conformal=False)
-    lear_test     = lear.predict(test_df)
-    test_actuals  = test_df["price"]
+        print("\nTraining LEAR ...")
+        lear.train(train_df)
 
-    # Pre-calibration coverage on test window (for reference)
-    lgbm_m_raw = _compute_metrics(
-        test_actuals,
-        lgbm_test_raw["lgbm_q05"], lgbm_test_raw["lgbm_q50"], lgbm_test_raw["lgbm_q95"],
-        test_from=str(test_start.date()), test_to=str(end.date()),
-    )
+        # ── Load calibration and test windows ─────────────────────────────────
+        print(
+            f"\nLoading calibration window {cal_start.date()} -> {test_start.date()} ..."
+        )
+        cal_df = build_features(td, cal_start, test_start)
 
-    # Post-calibration metrics on test window — the headline numbers
-    lgbm_test_cal = lgbm.predict(test_df)          # now uses the freshly fitted ĉ
-    lgbm_m = _compute_metrics(
-        test_actuals,
-        lgbm_test_cal["lgbm_q05"], lgbm_test_cal["lgbm_q50"], lgbm_test_cal["lgbm_q95"],
-        test_from=str(test_start.date()), test_to=str(end.date()),
-    )
-    lgbm_m["coverage_q5_q95_raw"] = lgbm_m_raw["coverage_q5_q95"]
+        print(f"Loading test window {test_start.date()} -> {end.date()} ...")
+        test_df = build_features(td, test_start, end)
 
-    lear_m = _compute_metrics(
-        test_actuals,
-        lear_test["lear_q05"], lear_test["lear_q50"], lear_test["lear_q95"],
-        test_from=str(test_start.date()), test_to=str(end.date()),
-    )
+        # ── Conformal calibration (LightGBM only) — on cal window ONLY ────────
+        print("\nCalibrating LightGBM prediction intervals (split conformal) ...")
+        lgbm_cal_raw = lgbm.predict(cal_df, apply_conformal=False)
+        cal_actuals = cal_df["price"]
+        cal_mask = cal_actuals.notna()
+        lgbm.calibrate(
+            cal_actuals[cal_mask],
+            lgbm_cal_raw["lgbm_q05"][cal_mask],
+            lgbm_cal_raw["lgbm_q95"][cal_mask],
+        )
 
-    new_metrics = {"lgbm": lgbm_m, "lear": lear_m}
-    with open(metrics_path, "w") as f:
-        json.dump(new_metrics, f, indent=2)
+        # ── Metrics on TEST window ─────────────────────────────────────────────
+        print(f"\nEvaluating on test window {test_start.date()} -> {end.date()} ...")
+        lgbm_test_raw = lgbm.predict(test_df, apply_conformal=False)
+        lear_test = lear.predict(test_df)
+        test_actuals = test_df["price"]
 
-    _print_metrics_table(
-        title=f"Test metrics -- {test_start.date()} -> {end.date()}  (calibrated on {cal_start.date()} -> {test_start.date()})",
-        lgbm_m=lgbm_m,
-        lear_m=lear_m,
-        lgbm_raw_cov=lgbm_m_raw["coverage_q5_q95"],
-    )
+        lgbm_m_raw = _compute_metrics(
+            test_actuals,
+            lgbm_test_raw["lgbm_q05"],
+            lgbm_test_raw["lgbm_q50"],
+            lgbm_test_raw["lgbm_q95"],
+            test_from=str(test_start.date()),
+            test_to=str(end.date()),
+        )
 
-    run_kt   = datetime.now(timezone.utc)
-    run_time = run_kt.strftime("%Y-%m-%d %H:%M")
-    _append_log(
-        run_time=run_time,
-        train_start=str(start.date()),
-        train_end=str(train_end.date()),
-        val_start=str(cal_start.date()),
-        val_end=str(end.date()),
-        n_train=labelled,
-        prev_metrics=prev_metrics,
-        new_metrics=new_metrics,
-        note=note,
-        lgbm_best_iters=lgbm_best_iters,
-    )
+        lgbm_test_cal = lgbm.predict(test_df)
+        lgbm_m = _compute_metrics(
+            test_actuals,
+            lgbm_test_cal["lgbm_q05"],
+            lgbm_test_cal["lgbm_q50"],
+            lgbm_test_cal["lgbm_q95"],
+            test_from=str(test_start.date()),
+            test_to=str(end.date()),
+        )
+        lgbm_m["coverage_q5_q95_raw"] = lgbm_m_raw["coverage_q5_q95"]
 
-    # Write forecasts to TimeDB — use the full 90-day window (cal + test)
-    # so the dashboard has predictions across the entire recent history.
-    print("\nWriting forecasts to TimeDB ...")
-    lgbm_full_cal = lgbm.predict(
-        build_features(td, cal_start, end)
-    )
-    lear_full     = lear.predict(
-        build_features(td, cal_start, end)
-    )
-    _write_forecasts_to_timedb(td, lgbm_full_cal, lear_full, knowledge_time=run_kt)
+        lear_m = _compute_metrics(
+            test_actuals,
+            lear_test["lear_q05"],
+            lear_test["lear_q50"],
+            lear_test["lear_q95"],
+            test_from=str(test_start.date()),
+            test_to=str(end.date()),
+        )
 
-    trained_info = {
-        "trained_at":   run_kt.isoformat(),
-        "train_end":    str(train_end.date()),
-        "cal_start":    str(cal_start.date()),
-        "test_start":   str(test_start.date()),
-        "val_end":      str(end.date()),
-    }
-    trained_path = MODEL_DIR / "trained_at.json"
-    with open(trained_path, "w") as f:
-        json.dump(trained_info, f, indent=2)
-    print(f"  [OK] Training cache written -> {trained_path}")
+        new_metrics = {"lgbm": lgbm_m, "lear": lear_m}
+        with open(metrics_path, "w") as f:
+            json.dump(new_metrics, f, indent=2)
 
-    print("\nUploading model artifacts to S3 ...")
-    _s3_upload_models()
+        _print_metrics_table(
+            title=(
+                f"Test metrics -- {test_start.date()} -> {end.date()}  "
+                f"(calibrated on {cal_start.date()} -> {test_start.date()})"
+            ),
+            lgbm_m=lgbm_m,
+            lear_m=lear_m,
+            lgbm_raw_cov=lgbm_m_raw["coverage_q5_q95"],
+        )
 
-    print(f"\n[OK] All models trained. Metrics saved to {metrics_path}")
+        run_kt = datetime.now(timezone.utc)
+        run_time = run_kt.strftime("%Y-%m-%d %H:%M")
+        _append_log(
+            run_time=run_time,
+            train_start=str(start.date()),
+            train_end=str(train_end.date()),
+            val_start=str(cal_start.date()),
+            val_end=str(end.date()),
+            n_train=labelled,
+            prev_metrics=prev_metrics,
+            new_metrics=new_metrics,
+            note=note,
+            lgbm_best_iters=lgbm_best_iters,
+        )
+
+        # ── MLflow: log hyperparameters ───────────────────────────────────────
+        _params_to_log = {
+            k: v
+            for k, v in lgbm._LGB_PARAMS_BASE.items()
+            if k not in ("objective", "metric", "n_jobs", "verbose")
+        }
+        _params_to_log["lgbm_val_frac"] = lgbm.VAL_FRAC
+        _params_to_log["lgbm_early_stop_rounds"] = lgbm.EARLY_STOP_N
+        mlflow.log_params(_params_to_log)
+
+        # ── MLflow: log metrics ───────────────────────────────────────────────
+        mlflow.log_metrics(
+            {
+                "lgbm_mae": lgbm_m["mae"],
+                "lgbm_rmse": lgbm_m["rmse"],
+                "lgbm_mape": lgbm_m["mape"],
+                "lgbm_coverage": lgbm_m["coverage_q5_q95"],
+                "lgbm_spike_mae": lgbm_m["spike_mae"],
+                "lgbm_night_mae": lgbm_m["night_mae"],
+                "lgbm_peak_mae": lgbm_m["peak_mae"],
+                "lear_mae": lear_m["mae"],
+                "lear_rmse": lear_m["rmse"],
+                "lear_coverage": lear_m["coverage_q5_q95"],
+                "lear_spike_mae": lear_m["spike_mae"],
+                "lear_night_mae": lear_m["night_mae"],
+                "lear_peak_mae": lear_m["peak_mae"],
+            }
+        )
+
+        # ── MLflow: log trained model artifacts ───────────────────────────────
+        for name, model in lgbm_models.items():
+            mlflow_lgbm.log_model(model, f"lgbm_{name}")
+
+        # ── MLflow: log feature importance plot ───────────────────────────────
+        _log_feature_importance()
+
+        active = mlflow.active_run()
+        if active:
+            print(
+                f"\n[MLFLOW] Run {active.info.run_id[:8]}... "
+                f"logged to '{EXPERIMENTS['lgbm']}'"
+            )
+
+        # ── Write forecasts to TimeDB ─────────────────────────────────────────
+        print("\nWriting forecasts to TimeDB ...")
+        lgbm_full_cal = lgbm.predict(build_features(td, cal_start, end))
+        lear_full = lear.predict(build_features(td, cal_start, end))
+        _write_forecasts_to_timedb(td, lgbm_full_cal, lear_full, knowledge_time=run_kt)
+
+        trained_info = {
+            "trained_at": run_kt.isoformat(),
+            "train_end": str(train_end.date()),
+            "cal_start": str(cal_start.date()),
+            "test_start": str(test_start.date()),
+            "val_end": str(end.date()),
+        }
+        trained_path = MODEL_DIR / "trained_at.json"
+        with open(trained_path, "w") as f:
+            json.dump(trained_info, f, indent=2)
+        print(f"  [OK] Training cache written -> {trained_path}")
+
+        print("\nUploading model artifacts to S3 ...")
+        _s3_upload_models()
+
+        print(f"\n[OK] All models trained. Metrics saved to {metrics_path}")
 
 
 if __name__ == "__main__":
@@ -493,7 +607,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--note",
         default="Routine training run",
-        help="Short description of changes made (logged to MODEL_LOG.md)",
+        help="Short description of changes made (logged to MODEL_LOG.md and MLflow)",
     )
     parser.add_argument(
         "--force",
@@ -503,12 +617,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     start = datetime.fromisoformat(args.start).replace(tzinfo=timezone.utc)
-    end   = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    end = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
 
     if not args.force:
         _td = init_schema()
         if _should_skip_training(_td):
             import sys
+
             sys.exit(0)
 
     train(start, end, note=args.note)

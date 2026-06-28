@@ -36,4 +36,7 @@ filterwarnings = [
     # These originate entirely inside mlflow — unfixable from our side.
     "ignore::pydantic.warnings.PydanticDeprecatedSince20:mlflow",
     "ignore::pydantic.warnings.PydanticDeprecatedSince212:mlflow",
+    # xarray uses bare np.timedelta64("NaT") which triggers numpy 2.x DeprecationWarning.
+    # Triggered at import time by mlflow — unfixable from our side.
+    "ignore:.*generic.*unit.*NumPy timedelta.*deprecated.*:DeprecationWarning:xarray",
 ]
