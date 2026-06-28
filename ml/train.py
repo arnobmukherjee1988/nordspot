@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 import mlflow
 import mlflow.catboost as mlflow_cat
 import mlflow.lightgbm as mlflow_lgbm
+import mlflow.sklearn as mlflow_sklearn
 import mlflow.xgboost as mlflow_xgb
 import numpy as np
 import pandas as pd
@@ -34,6 +35,7 @@ from ml.models import catboost as cat_model
 from ml.models import ensemble as ens_model
 from ml.models import lear, lgbm
 from ml.models import xgboost as xgb_model
+from ml.registry import register_and_promote
 from pipeline.features import build_features
 from pipeline.store import write_series
 
@@ -870,12 +872,23 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
             }
         )
 
+        # MLflow: log ensemble q50 meta-model artifact for Model Registry
+        mlflow_sklearn.log_model(ens_models["q50"], "ensemble_q50")
+
+        # Capture run_id before the context manager closes
+        ens_run_id = mlflow.active_run().info.run_id
+
         ens_active = mlflow.active_run()
         if ens_active:
             print(
                 f"\n[MLFLOW] Ensemble run {ens_active.info.run_id[:8]}... "
                 f"logged to '{EXPERIMENTS['ensemble']}'"
             )
+
+    # ── Model Registry: auto-promote if MAE improves ──────────────────────────
+    # Runs outside the MLflow with-block — no active run required.
+    print("\nChecking Model Registry for auto-promotion ...")
+    register_and_promote(ens_run_id, ens_m["mae"])
 
 
 if __name__ == "__main__":

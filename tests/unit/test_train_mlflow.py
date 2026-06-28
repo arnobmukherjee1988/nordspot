@@ -200,6 +200,9 @@ def _run_train(note: str = "test run") -> None:
             },
         ),
         patch("ml.models.ensemble.predict", side_effect=_fake_ens_preds),
+        # ── Registry (Story 4.7) ──────────────────────────────────────────────
+        patch("ml.train.register_and_promote"),  # skip Model Registry in unit tests
+        patch("mlflow.sklearn.log_model"),  # skip sklearn artifact serialisation
     ]
 
     with ExitStack() as stack:
