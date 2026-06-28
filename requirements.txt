@@ -16,6 +16,7 @@ scikit-learn==1.8.0        # Ridge baseline, LASSO (LEAR), metrics
 numpy>=2.0.0              # feast 0.64 requires >=2.0; GE 0.18 declares <2.0 but works in practice
 pandas==2.3.3
 holidays==0.96             # Swedish public holiday calendar
+mlflow>=2.13,<3.0          # Experiment tracking, model registry (Epic 4)
 
 # ── Data quality & transforms ─────────────────────────────────────────────────
 great-expectations>=0.18,<1.0  # Bronze-layer expectation suites (PandasDataset API)
