@@ -15,7 +15,7 @@ Usage:
 
 import argparse
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import openmeteo_requests
 import pandas as pd
@@ -66,7 +66,7 @@ def fetch_weather(
     times = pd.date_range(
         start=pd.to_datetime(hourly.Time(), unit="s", utc=True),
         end=pd.to_datetime(hourly.TimeEnd(), unit="s", utc=True),
-        freq=pd.Timedelta(seconds=hourly.Interval()),
+        freq=timedelta(seconds=int(hourly.Interval())),
         inclusive="left",
     )
     result = {}

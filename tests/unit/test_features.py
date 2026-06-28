@@ -9,7 +9,7 @@ Strategy:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -237,7 +237,7 @@ def test_build_features_returns_dataframe(se3):
     df = build_features(
         se3,
         start=datetime(2026, 1, 1, tzinfo=timezone.utc),
-        end=datetime(2026, 1, 1, tzinfo=timezone.utc) + pd.Timedelta(hours=N_HOURS),
+        end=datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(hours=N_HOURS),
         td=_make_td_mock(idx),
         ch_client=_make_ch_mock(idx),
     )
@@ -250,7 +250,7 @@ def test_build_features_has_valid_time_column(se3):
     df = build_features(
         se3,
         start=datetime(2026, 1, 1, tzinfo=timezone.utc),
-        end=datetime(2026, 1, 1, tzinfo=timezone.utc) + pd.Timedelta(hours=N_HOURS),
+        end=datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(hours=N_HOURS),
         td=_make_td_mock(idx),
         ch_client=_make_ch_mock(idx),
     )
@@ -263,7 +263,7 @@ def test_build_features_has_zone_column(se3):
     df = build_features(
         se3,
         start=datetime(2026, 1, 1, tzinfo=timezone.utc),
-        end=datetime(2026, 1, 1, tzinfo=timezone.utc) + pd.Timedelta(hours=N_HOURS),
+        end=datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(hours=N_HOURS),
         td=_make_td_mock(idx),
         ch_client=_make_ch_mock(idx),
     )
@@ -276,7 +276,7 @@ def test_build_features_zone_column_is_second(se3):
     df = build_features(
         se3,
         start=datetime(2026, 1, 1, tzinfo=timezone.utc),
-        end=datetime(2026, 1, 1, tzinfo=timezone.utc) + pd.Timedelta(hours=N_HOURS),
+        end=datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(hours=N_HOURS),
         td=_make_td_mock(idx),
         ch_client=_make_ch_mock(idx),
     )
@@ -289,7 +289,7 @@ def test_build_features_contains_price_lags(se3):
     df = build_features(
         se3,
         start=datetime(2026, 1, 1, tzinfo=timezone.utc),
-        end=datetime(2026, 1, 1, tzinfo=timezone.utc) + pd.Timedelta(hours=N_HOURS),
+        end=datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(hours=N_HOURS),
         td=_make_td_mock(idx),
         ch_client=_make_ch_mock(idx),
     )
@@ -302,7 +302,7 @@ def test_build_features_contains_calendar_cols(se3):
     df = build_features(
         se3,
         start=datetime(2026, 1, 1, tzinfo=timezone.utc),
-        end=datetime(2026, 1, 1, tzinfo=timezone.utc) + pd.Timedelta(hours=N_HOURS),
+        end=datetime(2026, 1, 1, tzinfo=timezone.utc) + timedelta(hours=N_HOURS),
         td=_make_td_mock(idx),
         ch_client=_make_ch_mock(idx),
     )
