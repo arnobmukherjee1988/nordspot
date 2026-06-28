@@ -81,6 +81,19 @@ def _fake_xgb_preds(df: pd.DataFrame, **_kw: object) -> pd.DataFrame:
     )
 
 
+def _fake_cat_preds(df: pd.DataFrame, **_kw: object) -> pd.DataFrame:
+    rng = np.random.default_rng(4)
+    n = len(df)
+    return pd.DataFrame(
+        {
+            "cat_q05": rng.uniform(10, 60, n),
+            "cat_q50": rng.uniform(30, 120, n),
+            "cat_q95": rng.uniform(100, 250, n),
+        },
+        index=df.index,
+    )
+
+
 def _fake_fi() -> pd.DataFrame:
     """Minimal feature-importance DataFrame for lgbm.feature_importance mock."""
     return pd.DataFrame({"mean": [1.0, 0.5]}, index=["price_lag24h", "hour"])
@@ -145,6 +158,18 @@ def _run_train(note: str = "test run") -> None:
         patch("ml.models.xgboost.predict", side_effect=_fake_xgb_preds),
         patch("ml.models.xgboost.calibrate", return_value=0.3),
         patch("mlflow.xgboost.log_model"),  # skip artifact storage
+        # ── CatBoost (Story 4.4) ─────────────────────────────────
+        patch(
+            "ml.models.catboost.train",
+            return_value={
+                "q05": MagicMock(),
+                "q50": MagicMock(),
+                "q95": MagicMock(),
+            },
+        ),
+        patch("ml.models.catboost.predict", side_effect=_fake_cat_preds),
+        patch("ml.models.catboost.calibrate", return_value=0.2),
+        patch("mlflow.catboost.log_model"),  # skip artifact storage
     ):
         train(start=_START, end=_END, note=note)
 
@@ -276,4 +301,37 @@ def test_xgboost_logs_metrics(local_mlflow):
     metrics = client.search_runs(experiment_ids=[exp.experiment_id])[0].data.metrics
     for key in ("xgb_mae", "xgb_rmse", "xgb_coverage", "xgb_spike_mae"):
         assert key in metrics, f"Missing XGBoost metric: {key}"
+        assert isinstance(metrics[key], float), f"{key} should be float"
+
+
+# ── CatBoost MLflow tests (Story 4.4) ────────────────────────────────────────
+
+
+def test_catboost_run_created(local_mlflow):
+    """train() must also create a run in the nordspot-catboost experiment."""
+    _run_train()
+    client = mlflow.tracking.MlflowClient(tracking_uri=local_mlflow)
+    exp = client.get_experiment_by_name(EXPERIMENTS["catboost"])
+    assert exp is not None, f"Experiment '{EXPERIMENTS['catboost']}' was not created"
+    runs = client.search_runs(experiment_ids=[exp.experiment_id])
+    assert len(runs) == 1, f"Expected 1 CatBoost run, found {len(runs)}"
+
+
+def test_catboost_run_status_finished(local_mlflow):
+    """CatBoost run must complete cleanly — status FINISHED."""
+    _run_train()
+    client = mlflow.tracking.MlflowClient(tracking_uri=local_mlflow)
+    exp = client.get_experiment_by_name(EXPERIMENTS["catboost"])
+    run = client.search_runs(experiment_ids=[exp.experiment_id])[0]
+    assert run.info.status == "FINISHED", f"CatBoost run status: {run.info.status}"
+
+
+def test_catboost_logs_metrics(local_mlflow):
+    """Key CatBoost test-window metrics must be present and numeric."""
+    _run_train()
+    client = mlflow.tracking.MlflowClient(tracking_uri=local_mlflow)
+    exp = client.get_experiment_by_name(EXPERIMENTS["catboost"])
+    metrics = client.search_runs(experiment_ids=[exp.experiment_id])[0].data.metrics
+    for key in ("cat_mae", "cat_rmse", "cat_coverage", "cat_spike_mae"):
+        assert key in metrics, f"Missing CatBoost metric: {key}"
         assert isinstance(metrics[key], float), f"{key} should be float"

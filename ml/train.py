@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import mlflow
+import mlflow.catboost as mlflow_cat
 import mlflow.lightgbm as mlflow_lgbm
 import mlflow.xgboost as mlflow_xgb
 import numpy as np
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
 
 from db.schema import SERIES, init_schema
 from ml.mlflow_setup import EXPERIMENTS, get_tracking_uri
+from ml.models import catboost as cat_model
 from ml.models import lear, lgbm
 from ml.models import xgboost as xgb_model
 from pipeline.features import build_features
@@ -679,6 +681,88 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
             print(
                 f"\n[MLFLOW] XGBoost run {xgb_active.info.run_id[:8]}... "
                 f"logged to '{EXPERIMENTS['xgboost']}'"
+            )
+
+    # ── CatBoost: separate MLflow run in nordspot-catboost experiment ─────────
+    mlflow.set_experiment(EXPERIMENTS["catboost"])
+    with mlflow.start_run(run_name=f"catboost-{end.date()}"):
+        mlflow.set_tags(
+            {
+                "note": note,
+                "zone": "SE3",
+                "train_start": str(start.date()),
+                "run_end": str(end.date()),
+            }
+        )
+
+        print("\nTraining CatBoost ...")
+        cat_models = cat_model.train(train_df)
+
+        # Conformal calibration on the cal window
+        print("\nCalibrating CatBoost prediction intervals (split conformal) ...")
+        cat_cal_raw = cat_model.predict(cal_df, apply_conformal=False)
+        cat_cal_actuals = cal_df["price"]
+        cat_cal_mask = cat_cal_actuals.notna()
+        cat_model.calibrate(
+            cat_cal_actuals[cat_cal_mask],
+            cat_cal_raw["cat_q05"][cat_cal_mask],
+            cat_cal_raw["cat_q95"][cat_cal_mask],
+        )
+
+        # Metrics on test window
+        cat_test_cal = cat_model.predict(test_df)
+        cat_test_raw = cat_model.predict(test_df, apply_conformal=False)
+        cat_m_raw = _compute_metrics(
+            test_actuals,
+            cat_test_raw["cat_q05"],
+            cat_test_raw["cat_q50"],
+            cat_test_raw["cat_q95"],
+            test_from=str(test_start.date()),
+            test_to=str(end.date()),
+        )
+        cat_m = _compute_metrics(
+            test_actuals,
+            cat_test_cal["cat_q05"],
+            cat_test_cal["cat_q50"],
+            cat_test_cal["cat_q95"],
+            test_from=str(test_start.date()),
+            test_to=str(end.date()),
+        )
+        cat_m["coverage_q5_q95_raw"] = cat_m_raw["coverage_q5_q95"]
+
+        # MLflow: log hyperparameters
+        _cat_params = {
+            k: v
+            for k, v in cat_model._CB_PARAMS_BASE.items()
+            if k not in ("thread_count", "random_seed", "verbose")
+        }
+        _cat_params["cat_val_frac"] = cat_model.VAL_FRAC
+        _cat_params["cat_early_stop_rounds"] = cat_model.EARLY_STOP_N
+        _cat_params["cat_features"] = ",".join(cat_model.CAT_FEATURE_COLS)
+        mlflow.log_params(_cat_params)
+
+        # MLflow: log metrics
+        mlflow.log_metrics(
+            {
+                "cat_mae": cat_m["mae"],
+                "cat_rmse": cat_m["rmse"],
+                "cat_mape": cat_m["mape"],
+                "cat_coverage": cat_m["coverage_q5_q95"],
+                "cat_spike_mae": cat_m["spike_mae"],
+                "cat_night_mae": cat_m["night_mae"],
+                "cat_peak_mae": cat_m["peak_mae"],
+            }
+        )
+
+        # MLflow: log model artifacts
+        for name, model in cat_models.items():
+            mlflow_cat.log_model(model, f"cat_{name}")
+
+        cat_active = mlflow.active_run()
+        if cat_active:
+            print(
+                f"\n[MLFLOW] CatBoost run {cat_active.info.run_id[:8]}... "
+                f"logged to '{EXPERIMENTS['catboost']}'"
             )
 
 
