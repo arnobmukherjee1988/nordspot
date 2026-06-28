@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 
 import mlflow
 import mlflow.lightgbm as mlflow_lgbm
+import mlflow.xgboost as mlflow_xgb
 import numpy as np
 import pandas as pd
 
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
 from db.schema import SERIES, init_schema
 from ml.mlflow_setup import EXPERIMENTS, get_tracking_uri
 from ml.models import lear, lgbm
+from ml.models import xgboost as xgb_model
 from pipeline.features import build_features
 from pipeline.store import write_series
 
@@ -595,6 +597,89 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
         _s3_upload_models()
 
         print(f"\n[OK] All models trained. Metrics saved to {metrics_path}")
+
+    # ── XGBoost: separate MLflow run in nordspot-xgboost experiment ───────────
+    # train_df / cal_df / test_df / test_actuals / test_start are still in scope
+    # from the LGBM block above — Python with-blocks do not create a new scope.
+    mlflow.set_experiment(EXPERIMENTS["xgboost"])
+    with mlflow.start_run(run_name=f"xgboost-{end.date()}"):
+        mlflow.set_tags(
+            {
+                "note": note,
+                "zone": "SE3",
+                "train_start": str(start.date()),
+                "run_end": str(end.date()),
+            }
+        )
+
+        print("\nTraining XGBoost ...")
+        xgb_models = xgb_model.train(train_df)
+
+        # Conformal calibration on the cal window
+        print("\nCalibrating XGBoost prediction intervals (split conformal) ...")
+        xgb_cal_raw = xgb_model.predict(cal_df, apply_conformal=False)
+        xgb_cal_actuals = cal_df["price"]
+        xgb_cal_mask = xgb_cal_actuals.notna()
+        xgb_model.calibrate(
+            xgb_cal_actuals[xgb_cal_mask],
+            xgb_cal_raw["xgb_q05"][xgb_cal_mask],
+            xgb_cal_raw["xgb_q95"][xgb_cal_mask],
+        )
+
+        # Metrics on test window
+        xgb_test_cal = xgb_model.predict(test_df)
+        xgb_test_raw = xgb_model.predict(test_df, apply_conformal=False)
+        xgb_m_raw = _compute_metrics(
+            test_actuals,
+            xgb_test_raw["xgb_q05"],
+            xgb_test_raw["xgb_q50"],
+            xgb_test_raw["xgb_q95"],
+            test_from=str(test_start.date()),
+            test_to=str(end.date()),
+        )
+        xgb_m = _compute_metrics(
+            test_actuals,
+            xgb_test_cal["xgb_q05"],
+            xgb_test_cal["xgb_q50"],
+            xgb_test_cal["xgb_q95"],
+            test_from=str(test_start.date()),
+            test_to=str(end.date()),
+        )
+        xgb_m["coverage_q5_q95_raw"] = xgb_m_raw["coverage_q5_q95"]
+
+        # MLflow: log hyperparameters
+        _xgb_params = {
+            k: v
+            for k, v in xgb_model._XGB_PARAMS_BASE.items()
+            if k not in ("n_jobs", "verbosity")
+        }
+        _xgb_params["xgb_val_frac"] = xgb_model.VAL_FRAC
+        _xgb_params["xgb_early_stop_rounds"] = xgb_model.EARLY_STOP_N
+        mlflow.log_params(_xgb_params)
+
+        # MLflow: log metrics
+        mlflow.log_metrics(
+            {
+                "xgb_mae": xgb_m["mae"],
+                "xgb_rmse": xgb_m["rmse"],
+                "xgb_mape": xgb_m["mape"],
+                "xgb_coverage": xgb_m["coverage_q5_q95"],
+                "xgb_spike_mae": xgb_m["spike_mae"],
+                "xgb_night_mae": xgb_m["night_mae"],
+                "xgb_peak_mae": xgb_m["peak_mae"],
+            }
+        )
+
+        # MLflow: log model artifacts
+        for name, model in xgb_models.items():
+            mlflow_xgb.log_model(model, f"xgb_{name}")
+
+        xgb_active = mlflow.active_run()
+        if xgb_active:
+            print(
+                f"\n[MLFLOW] XGBoost run {xgb_active.info.run_id[:8]}... "
+                f"logged to '{EXPERIMENTS['xgboost']}'"
+            )
 
 
 if __name__ == "__main__":
