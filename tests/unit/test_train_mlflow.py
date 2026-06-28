@@ -9,6 +9,7 @@ LEAR model files, S3) are patched so no infrastructure is required.
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
@@ -126,9 +127,17 @@ def _run_train(note: str = "test run") -> None:
     """
     fake_df = _fake_df()
 
-    with (
+    # ExitStack avoids Python's "too many statically nested blocks" error
+    # that triggers when a parenthesised `with` block exceeds ~20 context managers.
+    _patches = [
+        # ── Core infrastructure ───────────────────────────────────
         patch("ml.train.init_schema", return_value=MagicMock()),
         patch("ml.train.build_features", return_value=fake_df),
+        patch("ml.train._write_forecasts_to_timedb"),
+        patch("ml.train._s3_upload_models"),
+        patch("ml.train._log_feature_importance"),  # skip matplotlib in CI
+        patch("ml.train.log_shap_artifacts"),  # skip SHAP compute in CI
+        # ── LGBM ─────────────────────────────────────────────────
         patch(
             "ml.models.lgbm.train",
             return_value={
@@ -140,13 +149,11 @@ def _run_train(note: str = "test run") -> None:
         patch("ml.models.lgbm.predict", side_effect=_fake_lgbm_preds),
         patch("ml.models.lgbm.calibrate", return_value=0.5),
         patch("ml.models.lgbm.feature_importance", return_value=_fake_fi()),
+        patch("mlflow.lightgbm.log_model"),
+        # ── LEAR ─────────────────────────────────────────────────
         patch("ml.models.lear.train"),
         patch("ml.models.lear.predict", side_effect=_fake_lear_preds),
-        patch("ml.train._write_forecasts_to_timedb"),
-        patch("ml.train._s3_upload_models"),
-        patch("ml.train._log_feature_importance"),  # skip matplotlib in CI
-        patch("mlflow.lightgbm.log_model"),  # skip artifact storage
-        # ── XGBoost (Story 4.3) ─────────────────────────────────
+        # ── XGBoost (Story 4.3) ───────────────────────────────────
         patch(
             "ml.models.xgboost.train",
             return_value={
@@ -157,8 +164,8 @@ def _run_train(note: str = "test run") -> None:
         ),
         patch("ml.models.xgboost.predict", side_effect=_fake_xgb_preds),
         patch("ml.models.xgboost.calibrate", return_value=0.3),
-        patch("mlflow.xgboost.log_model"),  # skip artifact storage
-        # ── CatBoost (Story 4.4) ─────────────────────────────────
+        patch("mlflow.xgboost.log_model"),
+        # ── CatBoost (Story 4.4) ──────────────────────────────────
         patch(
             "ml.models.catboost.train",
             return_value={
@@ -169,8 +176,12 @@ def _run_train(note: str = "test run") -> None:
         ),
         patch("ml.models.catboost.predict", side_effect=_fake_cat_preds),
         patch("ml.models.catboost.calibrate", return_value=0.2),
-        patch("mlflow.catboost.log_model"),  # skip artifact storage
-    ):
+        patch("mlflow.catboost.log_model"),
+    ]
+
+    with ExitStack() as stack:
+        for p in _patches:
+            stack.enter_context(p)
         train(start=_START, end=_END, note=note)
 
 

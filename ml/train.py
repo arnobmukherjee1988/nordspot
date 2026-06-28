@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from timedb import TimeDBClient
 
 from db.schema import SERIES, init_schema
+from ml.explain import log_shap_artifacts
 from ml.mlflow_setup import EXPERIMENTS, get_tracking_uri
 from ml.models import catboost as cat_model
 from ml.models import lear, lgbm
@@ -570,6 +571,13 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
         # ── MLflow: log feature importance plot ───────────────────────────────
         _log_feature_importance()
 
+        # ── MLflow: log SHAP interpretability plots ───────────────────────────
+        _lgbm_x, _ = lgbm._prep(
+            train_df.sample(min(200, len(train_df)), random_state=0)
+        )
+        if not _lgbm_x.empty:
+            log_shap_artifacts(lgbm_models["q50"], _lgbm_x, prefix="lgbm")
+
         active = mlflow.active_run()
         if active:
             print(
@@ -676,6 +684,15 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
         for name, model in xgb_models.items():
             mlflow_xgb.log_model(model, f"xgb_{name}")
 
+        # MLflow: log SHAP interpretability plots
+        from ml.models.xgboost import (
+            _prep as _xgb_prep,  # local import avoids circular dep
+        )
+
+        _xgb_x, _ = _xgb_prep(train_df.sample(min(200, len(train_df)), random_state=0))
+        if not _xgb_x.empty:
+            log_shap_artifacts(xgb_models["q50"], _xgb_x, prefix="xgb")
+
         xgb_active = mlflow.active_run()
         if xgb_active:
             print(
@@ -757,6 +774,15 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
         # MLflow: log model artifacts
         for name, model in cat_models.items():
             mlflow_cat.log_model(model, f"cat_{name}")
+
+        # MLflow: log SHAP interpretability plots
+        from ml.models.catboost import (
+            _prep as _cat_prep,  # local import avoids circular dep
+        )
+
+        _cat_x, _ = _cat_prep(train_df.sample(min(200, len(train_df)), random_state=0))
+        if not _cat_x.empty:
+            log_shap_artifacts(cat_models["q50"], _cat_x, prefix="cat")
 
         cat_active = mlflow.active_run()
         if cat_active:
