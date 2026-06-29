@@ -1,9 +1,10 @@
 """Unit tests for POST /v1/forecast.
 
-Story 5.4: the endpoint now requires a loaded Production model (503 otherwise)
-and calls get_inference_features() + run_inference() for real predictions.
+Story 5.5: endpoint now requires a valid X-API-Key header (401 otherwise).
 
 All tests use an autouse fixture that:
+    - sets NORDSPOT_API_KEYS env var so the dependency accepts _TEST_KEY
+    - sends _TEST_KEY in every request via TestClient headers
     - injects a ready ModelStore so happy-path requests get 200
     - stubs get_inference_features and run_inference so no DB or model
       files are accessed
@@ -13,6 +14,7 @@ Tests cover:
     - Input validation: invalid zone, today, yesterday → 422
     - Response shape: 24 hours, hours 0-23, q05/point/q95 present
     - Zone mirroring: response zone matches request zone
+    - Authentication: missing key → 401, wrong key → 401
     - Service unavailable: no Production model → 503
 """
 
@@ -28,7 +30,9 @@ from fastapi.testclient import TestClient
 from api.main import app
 from api.model_store import ModelStore
 
-client = TestClient(app)
+_TEST_KEY = "test-key-abc"
+
+client = TestClient(app, headers={"X-API-Key": _TEST_KEY})
 
 _TOMORROW = (datetime.date.today() + datetime.timedelta(days=1)).isoformat()
 _TODAY = datetime.date.today().isoformat()
@@ -51,12 +55,13 @@ _STUB_PREDS = pd.DataFrame(
 
 @pytest.fixture(autouse=True)
 def _ready_store_and_mock_inference(monkeypatch):
-    """Inject a ready model store and stub the data/inference pipeline.
+    """Inject a ready model store, valid API key, and stub the pipeline.
 
     Applied to every test in this module so no DB connections or model
-    files are needed.  The 503 test overrides app.state.model_store
-    within the test body.
+    files are needed.  Individual tests can override app.state.model_store
+    or send requests without the key header to test error paths.
     """
+    monkeypatch.setenv("NORDSPOT_API_KEYS", _TEST_KEY)
     app.state.model_store = ModelStore(model=MagicMock(), model_version="test-v1")
     monkeypatch.setattr(
         "api.routers.forecast.get_inference_features",
@@ -175,6 +180,26 @@ def test_forecast_missing_date_returns_422():
 def test_forecast_empty_body_returns_422():
     response = client.post("/v1/forecast", json={})
     assert response.status_code == 422
+
+
+# ── Authentication (401) ──────────────────────────────────────────────────────
+
+
+def test_forecast_returns_401_when_key_missing():
+    # Build a client with no default headers
+    no_key_client = TestClient(app)
+    response = no_key_client.post(
+        "/v1/forecast", json={"zone": "SE3", "date": _TOMORROW}
+    )
+    assert response.status_code == 401
+
+
+def test_forecast_returns_401_when_key_wrong():
+    wrong_key_client = TestClient(app, headers={"X-API-Key": "not-a-valid-key"})
+    response = wrong_key_client.post(
+        "/v1/forecast", json={"zone": "SE3", "date": _TOMORROW}
+    )
+    assert response.status_code == 401
 
 
 # ── Service unavailable (503) ─────────────────────────────────────────────────
