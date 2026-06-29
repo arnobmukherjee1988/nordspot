@@ -28,6 +28,7 @@ import pandas as pd
 if TYPE_CHECKING:
     from timedb import TimeDBClient
 
+from config.zone_config import load_all_zones, load_zone
 from db.schema import SERIES, init_schema
 from ml.explain import log_shap_artifacts
 from ml.mlflow_setup import EXPERIMENTS, get_tracking_uri
@@ -399,7 +400,15 @@ def _log_feature_importance() -> None:
 # ── Main training routine ─────────────────────────────────────────────────────
 
 
-def train(start: datetime, end: datetime, note: str = "Routine training run") -> None:
+def train(
+    start: datetime,
+    end: datetime,
+    note: str = "Routine training run",
+    zone: str = "SE3",
+) -> None:
+    # Validate and resolve zone config early — raises ValueError on unknown zone
+    zone_cfg = load_zone(zone)
+
     # ── MLflow: set experiment ────────────────────────────────────────────────
     mlflow.set_tracking_uri(get_tracking_uri())
     mlflow.set_experiment(EXPERIMENTS["lgbm"])
@@ -408,7 +417,7 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
         mlflow.set_tags(
             {
                 "note": note,
-                "zone": "SE3",
+                "zone": zone,
                 "train_start": str(start.date()),
                 "run_end": str(end.date()),
             }
@@ -425,7 +434,7 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
         train_end = cal_start
 
         print(f"Loading training features {start.date()} -> {train_end.date()} ...")
-        train_df = build_features(td, start, train_end)
+        train_df = build_features(zone_cfg, start, train_end, td=td)
         labelled = int(train_df["price"].notna().sum())
         print(
             f"  {len(train_df):,} rows, {labelled:,} labelled "
@@ -458,10 +467,10 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
         print(
             f"\nLoading calibration window {cal_start.date()} -> {test_start.date()} ..."
         )
-        cal_df = build_features(td, cal_start, test_start)
+        cal_df = build_features(zone_cfg, cal_start, test_start, td=td)
 
         print(f"Loading test window {test_start.date()} -> {end.date()} ...")
-        test_df = build_features(td, test_start, end)
+        test_df = build_features(zone_cfg, test_start, end, td=td)
 
         # ── Conformal calibration (LightGBM only) — on cal window ONLY ────────
         print("\nCalibrating LightGBM prediction intervals (split conformal) ...")
@@ -590,8 +599,8 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
 
         # ── Write forecasts to TimeDB ─────────────────────────────────────────
         print("\nWriting forecasts to TimeDB ...")
-        lgbm_full_cal = lgbm.predict(build_features(td, cal_start, end))
-        lear_full = lear.predict(build_features(td, cal_start, end))
+        lgbm_full_cal = lgbm.predict(build_features(zone_cfg, cal_start, end, td=td))
+        lear_full = lear.predict(build_features(zone_cfg, cal_start, end, td=td))
         _write_forecasts_to_timedb(td, lgbm_full_cal, lear_full, knowledge_time=run_kt)
 
         trained_info = {
@@ -619,7 +628,7 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
         mlflow.set_tags(
             {
                 "note": note,
-                "zone": "SE3",
+                "zone": zone,
                 "train_start": str(start.date()),
                 "run_end": str(end.date()),
             }
@@ -709,7 +718,7 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
         mlflow.set_tags(
             {
                 "note": note,
-                "zone": "SE3",
+                "zone": zone,
                 "train_start": str(start.date()),
                 "run_end": str(end.date()),
             }
@@ -804,7 +813,7 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
         mlflow.set_tags(
             {
                 "note": note,
-                "zone": "SE3",
+                "zone": zone,
                 "train_start": str(start.date()),
                 "run_end": str(end.date()),
             }
@@ -887,8 +896,34 @@ def train(start: datetime, end: datetime, note: str = "Routine training run") ->
 
     # ── Model Registry: auto-promote if MAE improves ──────────────────────────
     # Runs outside the MLflow with-block — no active run required.
+    # Model name is zone-specific so each zone has its own registry lineage.
     print("\nChecking Model Registry for auto-promotion ...")
-    register_and_promote(ens_run_id, ens_m["mae"])
+    register_and_promote(
+        ens_run_id,
+        ens_m["mae"],
+        model_name=f"nordspot-ensemble-{zone}",
+    )
+
+
+# ── Multi-zone convenience wrapper ────────────────────────────────────────────
+
+
+def train_all_zones(
+    start: datetime,
+    end: datetime,
+    note: str = "Routine training run",
+) -> None:
+    """Train all four Swedish bidding zones in sequence (SE1, SE2, SE3, SE4).
+
+    Each zone runs as an independent call to train(), producing its own set of
+    MLflow runs (lgbm / xgboost / catboost / ensemble) and its own Model Registry
+    entry (nordspot-ensemble-SE1, …, nordspot-ensemble-SE4).
+    """
+    for zone_id in load_all_zones().keys():
+        print(f"\n{'=' * 64}")
+        print(f"  Training zone {zone_id} ...")
+        print(f"{'=' * 64}")
+        train(start=start, end=end, zone=zone_id, note=note)
 
 
 if __name__ == "__main__":
@@ -902,6 +937,12 @@ if __name__ == "__main__":
         "--note",
         default="Routine training run",
         help="Short description of changes made (logged to MODEL_LOG.md and MLflow)",
+    )
+    parser.add_argument(
+        "--zone",
+        default="SE3",
+        choices=["SE1", "SE2", "SE3", "SE4", "ALL"],
+        help="Bidding zone to train (default SE3). Pass ALL to train all four zones.",
     )
     parser.add_argument(
         "--force",
@@ -920,4 +961,7 @@ if __name__ == "__main__":
 
             sys.exit(0)
 
-    train(start, end, note=args.note)
+    if args.zone == "ALL":
+        train_all_zones(start, end, note=args.note)
+    else:
+        train(start, end, zone=args.zone, note=args.note)
