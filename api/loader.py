@@ -10,6 +10,7 @@ and serves stub predictions until a model is promoted.
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -20,7 +21,9 @@ from ml.mlflow_setup import get_tracking_uri
 
 logger = logging.getLogger("nordspot.api.loader")
 
-MODEL_NAME = "nordspot-ensemble"
+# Zone-specific model names registered by ml/train.py via register_and_promote().
+# Override NORDSPOT_MODEL_NAME in the environment to target a different zone.
+MODEL_NAME = os.getenv("NORDSPOT_MODEL_NAME", "nordspot-ensemble-SE3")
 
 
 def load_production_models(

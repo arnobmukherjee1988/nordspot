@@ -1,19 +1,22 @@
 """POST /v1/forecast — 24-hour ahead probabilistic price forecast.
 
-Story 5.2: model is loaded from MLflow Registry at startup (api.loader)
-and stored in app.state.model_store.  The response now includes the real
-registry version instead of the hard-coded "stub-5.1" string.
+Story 5.4: real model predictions fully wired in.
 
-Prediction is still synthetic (50 EUR/MWh flat, interval 30–70).
-Real feature retrieval and inference are wired in Stories 5.3–5.4.
+Request flow:
+    1. Check store.is_ready → HTTP 503 if no Production model loaded
+    2. get_inference_features()  → 24-row feature DataFrame (Story 5.3)
+    3. run_inference()           → ens_q05, ens_q50, ens_q95 (Story 5.4)
+    4. Assemble ForecastResponse with 24 HourlyForecast objects
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 
+from api.features import get_inference_features
+from api.predictor import run_inference
 from api.schemas import ForecastRequest, ForecastResponse, HourlyForecast
 
 router = APIRouter()
@@ -35,17 +38,42 @@ router = APIRouter()
 async def forecast(body: ForecastRequest, request: Request) -> ForecastResponse:
     """Return a 24-hour probabilistic price forecast.
 
-    Story 5.2: model_version is read from app.state.model_store.
-    Stub predictions (50 EUR/MWh flat) remain until Stories 5.3–5.4.
+    Returns HTTP 503 when no Production model has been loaded (i.e. training
+    has not yet completed or ``register_and_promote()`` was not called).
     """
     store = request.app.state.model_store
-    stub_forecast = [
-        HourlyForecast(hour=h, point=50.0, q05=30.0, q95=70.0) for h in range(24)
+
+    if not store.is_ready:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "No Production model is loaded. "
+                "Complete a training run and call register_and_promote(), "
+                "then restart the API to load the new Production version."
+            ),
+        )
+
+    # ── Feature retrieval ─────────────────────────────────────────────────
+    features_df = get_inference_features(body.zone, body.date)
+
+    # ── Inference ─────────────────────────────────────────────────────────
+    preds = run_inference(features_df)
+
+    # ── Assemble response ─────────────────────────────────────────────────
+    hourly = [
+        HourlyForecast(
+            hour=h,
+            point=round(float(preds.iloc[h]["ens_q50"]), 2),
+            q05=round(float(preds.iloc[h]["ens_q05"]), 2),
+            q95=round(float(preds.iloc[h]["ens_q95"]), 2),
+        )
+        for h in range(24)
     ]
+
     return ForecastResponse(
         zone=body.zone,
         date=body.date,
         model_version=store.model_version,
         generated_at=datetime.now(timezone.utc),
-        forecast=stub_forecast,
+        forecast=hourly,
     )
