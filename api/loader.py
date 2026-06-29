@@ -1,10 +1,17 @@
-"""MLflow Registry loader - called once at API startup.
+"""Model loader - called once at API startup.
 
-Queries the MLflow Model Registry for the current Production version of
-"nordspot-ensemble", downloads the artefact, and returns a populated
-ModelStore. If no Production version is registered (or MLflow is
-unreachable), an empty ModelStore is returned so the API starts cleanly
-and serves stub predictions until a model is promoted.
+Readiness strategy (disk-first):
+    1. Check whether the ensemble pickle files exist in MODEL_DIR.
+       These are written by ml/train.py regardless of MLflow artifact status.
+    2. Optionally enrich store metadata from the MLflow Registry (version,
+       trained_at) - best-effort, failures are logged but not fatal.
+
+Why not mlflow.pyfunc.load_model()?
+    The API predictor (api/predictor.py) loads models directly from
+    MODEL_DIR/*.pkl via ml.models.*.predict() - it never calls store.model.
+    store.is_ready is the only gate.  Downloading a PyFunc artefact from
+    MLflow is unnecessary and breaks when the MLflow server's artifact root
+    is not reachable from the training host (file:///mlflow/... on Docker).
 """
 
 from __future__ import annotations
@@ -12,83 +19,72 @@ from __future__ import annotations
 import logging
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
-import mlflow
 from mlflow.tracking import MlflowClient
 
 from ml.mlflow_setup import get_tracking_uri
 
 logger = logging.getLogger("nordspot.api.loader")
 
-# Zone-specific model names registered by ml/train.py via register_and_promote().
-# Override NORDSPOT_MODEL_NAME in the environment to target a different zone.
+MODEL_DIR = Path(os.getenv("MODEL_DIR", "model"))
 MODEL_NAME = os.getenv("NORDSPOT_MODEL_NAME", "nordspot-ensemble-SE3")
+
+# Sentinel: set on store.model when pickle files are present.
+# The predictor never uses this value - only is_ready (not None) matters.
+_MODEL_READY_SENTINEL = True
 
 
 def load_production_models(
     model_name: str = MODEL_NAME,
     tracking_uri: Optional[str] = None,
-) -> object:  # returns ModelStore - imported lazily to avoid circular dep
-    """Load the Production ensemble model from the MLflow Registry.
+) -> object:  # returns ModelStore
+    """Check disk for model files and enrich metadata from MLflow Registry.
 
-    Args:
-        model_name:   Registered model name.  Defaults to MODEL_NAME.
-        tracking_uri: Override the MLflow tracking URI.  Defaults to the
-                      value returned by ml.mlflow_setup.get_tracking_uri().
-
-    Returns:
-        A ModelStore instance.  ``is_ready`` is True only when a Production
-        model was found and downloaded successfully.
+    Returns a ModelStore with is_ready=True when ensemble pickle files exist.
     """
     from api.model_store import ModelStore
 
-    uri = tracking_uri or get_tracking_uri()
-    mlflow.set_tracking_uri(uri)
-    client = MlflowClient(tracking_uri=uri)
     store = ModelStore()
 
-    # -- 1. Fetch the Production version descriptor ------------------------
-    try:
-        prod_versions = client.get_latest_versions(model_name, stages=["Production"])
-    except Exception as exc:  # noqa: BLE001
+    # -- 1. Disk check (primary gate) -----------------------------------------
+    required_files = [
+        MODEL_DIR / "ensemble_q05.pkl",
+        MODEL_DIR / "ensemble_q50.pkl",
+        MODEL_DIR / "ensemble_q95.pkl",
+    ]
+    missing = [str(f) for f in required_files if not f.exists()]
+    if missing:
         logger.warning(
-            "MLflow Registry unreachable (%s) - API will serve stub predictions",
-            exc,
+            "Ensemble model files not found: %s - API will serve stub predictions",
+            missing,
         )
         return store
 
-    if not prod_versions:
-        logger.warning(
-            "No Production model registered for '%s' - API will serve stub predictions",
-            model_name,
-        )
-        return store
+    store.model = _MODEL_READY_SENTINEL
+    logger.info("Ensemble model files found in %s - API is ready", MODEL_DIR)
 
-    mv = prod_versions[0]
-
-    # -- 2. Download the model artefact ------------------------------------
+    # -- 2. MLflow Registry metadata (best-effort) ----------------------------
     try:
-        model_uri = f"models:/{model_name}/Production"
-        store.model = mlflow.pyfunc.load_model(model_uri)
+        uri = tracking_uri or get_tracking_uri()
+        client = MlflowClient(tracking_uri=uri)
+        mv = client.get_model_version_by_alias(model_name, "champion")
         store.model_version = mv.version
-        # creation_timestamp is epoch milliseconds
         ts_s = mv.creation_timestamp / 1_000
         store.trained_at = datetime.fromtimestamp(ts_s, tz=timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"
         )
         logger.info(
-            "Loaded '%s' v%s  trained_at=%s",
+            "MLflow Registry: '%s' champion is v%s  trained_at=%s",
             model_name,
             store.model_version,
             store.trained_at,
         )
     except Exception as exc:  # noqa: BLE001
-        logger.error(
-            "Failed to load artefact for '%s': %s - API will serve stub predictions",
-            model_name,
-            exc,
+        logger.warning(
+            "MLflow Registry metadata unavailable (%s) - using defaults", exc
         )
-        # store remains not_ready (model is still None)
+        store.model_version = "unknown"
 
     return store

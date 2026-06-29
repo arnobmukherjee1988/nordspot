@@ -499,3 +499,167 @@ causing deletion of all data before 2023-05-15.
 
 
 ---
+
+---
+
+## Run - 2026-06-29 12:52 UTC
+
+**Train:** 2020-01-01 -> 2026-03-31  (28,452 labelled rows)
+**Holdout:** 2026-03-31 -> 2026-06-29
+
+**Note:** Routine training run
+
+### Before
+
+| Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
+|---|---|---|---|---|---|---|
+| LGBM       | 60.64 | 74.74 | 16.0%->16.0% [OK] | 62.42 | 62.62 | 58.81 |
+| LEAR       | 60.64 | 74.74 | 16.0% | 62.42 | 62.62 | 58.81 |
+
+### After
+
+| Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
+|---|---|---|---|---|---|---|
+| LGBM       | 21.80 | 27.48 | 84.1%->94.3% [OK] | 41.42 | 19.97 | 25.61 |
+| LEAR       | 25.32 | 31.20 | 82.6% | 49.44 | 25.75 | 29.42 |
+
+### Delta vs previous run
+
+| | MAE delta | Coverage delta |
+|---|---|---|
+| LightGBM | -38.84 [OK] | +78.27 [OK] |
+| LEAR | -35.32 [OK] | +66.55 [OK] |
+
+**LightGBM early stopping best iterations:** 383, 187, 104
+
+
+---
+
+## Run - 2026-06-29 12:56 UTC
+
+**Train:** 2020-01-01 -> 2026-03-31  (28,452 labelled rows)
+**Holdout:** 2026-03-31 -> 2026-06-29
+
+**Note:** Routine training run
+
+### Before
+
+| Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
+|---|---|---|---|---|---|---|
+| LGBM       | 21.80 | 27.48 | 84.1%->94.3% [OK] | 41.42 | 19.97 | 25.61 |
+| LEAR       | 25.32 | 31.20 | 82.6% | 49.44 | 25.75 | 29.42 |
+
+### After
+
+| Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
+|---|---|---|---|---|---|---|
+| LGBM       | 21.80 | 27.48 | 84.1%->94.3% [OK] | 41.42 | 19.97 | 25.61 |
+| LEAR       | 25.32 | 31.20 | 82.6% | 49.44 | 25.75 | 29.42 |
+
+### Delta vs previous run
+
+| | MAE delta | Coverage delta |
+|---|---|---|
+| LightGBM | -0.00 [!] | -0.00 [!] |
+| LEAR | -0.00 [!] | -0.00 [!] |
+
+**LightGBM early stopping best iterations:** 383, 187, 104
+
+
+---
+
+## Run - 2026-06-29 13:07 UTC
+
+**Train:** 2020-01-01 -> 2026-03-31  (28,453 labelled rows)
+**Holdout:** 2026-03-31 -> 2026-06-29
+
+**Note:** Routine training run
+
+### Before
+
+| Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
+|---|---|---|---|---|---|---|
+| LGBM       | 21.80 | 27.48 | 84.1%->94.3% [OK] | 41.42 | 19.97 | 25.61 |
+| LEAR       | 25.32 | 31.20 | 82.6% | 49.44 | 25.75 | 29.42 |
+
+### After
+
+| Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
+|---|---|---|---|---|---|---|
+| LGBM       | 21.09 | 26.95 | 84.9%->94.5% [OK] | 40.16 | 19.29 | 24.66 |
+| LEAR       | 25.37 | 31.22 | 82.6% | 49.44 | 25.75 | 29.42 |
+
+### Delta vs previous run
+
+| | MAE delta | Coverage delta |
+|---|---|---|
+| LightGBM | -0.71 [OK] | +0.26 [OK] |
+| LEAR | +0.04 [!] | -0.00 [!] |
+
+**LightGBM early stopping best iterations:** 508, 166, 91
+
+
+---
+
+## Run - 2026-06-29 13:10 UTC
+
+**Train:** 2020-01-01 -> 2026-03-31  (28,453 labelled rows)
+**Holdout:** 2026-03-31 -> 2026-06-29
+
+**Note:** Routine training run
+
+### Before
+
+| Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
+|---|---|---|---|---|---|---|
+| LGBM       | 21.09 | 26.95 | 84.9%->94.5% [OK] | 40.16 | 19.29 | 24.66 |
+| LEAR       | 25.37 | 31.22 | 82.6% | 49.44 | 25.75 | 29.42 |
+
+### After
+
+| Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
+|---|---|---|---|---|---|---|
+| LGBM       | 21.09 | 26.95 | 84.9%->94.5% [OK] | 40.16 | 19.29 | 24.66 |
+| LEAR       | 25.37 | 31.22 | 82.6% | 49.44 | 25.75 | 29.42 |
+
+### Delta vs previous run
+
+| | MAE delta | Coverage delta |
+|---|---|---|
+| LightGBM | -0.00 [!] | -0.00 [!] |
+| LEAR | -0.00 [!] | -0.00 [!] |
+
+**LightGBM early stopping best iterations:** 508, 166, 91
+
+
+---
+
+## Run - 2026-06-29 13:15 UTC
+
+**Train:** 2020-01-01 -> 2026-03-31  (28,453 labelled rows)
+**Holdout:** 2026-03-31 -> 2026-06-29
+
+**Note:** Routine training run
+
+### Before
+
+| Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
+|---|---|---|---|---|---|---|
+| LGBM       | 21.09 | 26.95 | 84.9%->94.5% [OK] | 40.16 | 19.29 | 24.66 |
+| LEAR       | 25.37 | 31.22 | 82.6% | 49.44 | 25.75 | 29.42 |
+
+### After
+
+| Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
+|---|---|---|---|---|---|---|
+| LGBM       | 21.09 | 26.95 | 84.9%->94.5% [OK] | 40.16 | 19.29 | 24.66 |
+| LEAR       | 25.37 | 31.22 | 82.6% | 49.44 | 25.75 | 29.42 |
+
+### Delta vs previous run
+
+| | MAE delta | Coverage delta |
+|---|---|---|
+| LightGBM | -0.00 [!] | -0.00 [!] |
+| LEAR | -0.00 [!] | -0.00 [!] |
+
+**LightGBM early stopping best iterations:** 508, 166, 91

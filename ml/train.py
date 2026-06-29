@@ -435,6 +435,8 @@ def train(
 
         print(f"Loading training features {start.date()} -> {train_end.date()} ...")
         train_df = build_features(zone_cfg, start, train_end, td=td)
+        if "valid_time" in train_df.columns:
+            train_df = train_df.set_index("valid_time")
         labelled = int(train_df["price"].notna().sum())
         print(
             f"  {len(train_df):,} rows, {labelled:,} labelled "
@@ -468,9 +470,13 @@ def train(
             f"\nLoading calibration window {cal_start.date()} -> {test_start.date()} ..."
         )
         cal_df = build_features(zone_cfg, cal_start, test_start, td=td)
+        if "valid_time" in cal_df.columns:
+            cal_df = cal_df.set_index("valid_time")
 
         print(f"Loading test window {test_start.date()} -> {end.date()} ...")
         test_df = build_features(zone_cfg, test_start, end, td=td)
+        if "valid_time" in test_df.columns:
+            test_df = test_df.set_index("valid_time")
 
         # -- Conformal calibration (LightGBM only) - on cal window ONLY --------
         print("\nCalibrating LightGBM prediction intervals (split conformal) ...")
@@ -576,19 +582,31 @@ def train(
             }
         )
 
-        # -- MLflow: log trained model artifacts -------------------------------
-        for name, model in lgbm_models.items():
-            mlflow_lgbm.log_model(model, f"lgbm_{name}")
+        # -- MLflow: log trained model artifacts (best-effort) -----------------
+        # Artifact upload can fail when the MLflow server is local/Docker and
+        # the artifact root is not reachable from the training host. Models are
+        # already saved to model/ so this is supplementary.
+        try:
+            for name, model in lgbm_models.items():
+                mlflow_lgbm.log_model(model, f"lgbm_{name}")
+        except Exception as e:
+            print(f"  [WARN] MLflow artifact upload skipped: {e}")
 
-        # -- MLflow: log feature importance plot -------------------------------
-        _log_feature_importance()
+        # -- MLflow: log feature importance plot (best-effort) -----------------
+        try:
+            _log_feature_importance()
+        except Exception as e:
+            print(f"  [WARN] MLflow feature importance upload skipped: {e}")
 
-        # -- MLflow: log SHAP interpretability plots ---------------------------
-        _lgbm_x, _ = lgbm._prep(
-            train_df.sample(min(200, len(train_df)), random_state=0)
-        )
-        if not _lgbm_x.empty:
-            log_shap_artifacts(lgbm_models["q50"], _lgbm_x, prefix="lgbm")
+        # -- MLflow: log SHAP interpretability plots (best-effort) -------------
+        try:
+            _lgbm_x, _ = lgbm._prep(
+                train_df.sample(min(200, len(train_df)), random_state=0)
+            )
+            if not _lgbm_x.empty:
+                log_shap_artifacts(lgbm_models["q50"], _lgbm_x, prefix="lgbm")
+        except Exception as e:
+            print(f"  [WARN] MLflow SHAP upload skipped: {e}")
 
         active = mlflow.active_run()
         if active:
@@ -692,18 +710,26 @@ def train(
             }
         )
 
-        # MLflow: log model artifacts
-        for name, model in xgb_models.items():
-            mlflow_xgb.log_model(model, f"xgb_{name}")
+        # MLflow: log model artifacts (best-effort)
+        try:
+            for name, model in xgb_models.items():
+                mlflow_xgb.log_model(model, f"xgb_{name}")
+        except Exception as e:
+            print(f"  [WARN] MLflow XGBoost artifact upload skipped: {e}")
 
-        # MLflow: log SHAP interpretability plots
-        from ml.models.xgboost import (
-            _prep as _xgb_prep,  # local import avoids circular dep
-        )
+        # MLflow: log SHAP interpretability plots (best-effort)
+        try:
+            from ml.models.xgboost import (
+                _prep as _xgb_prep,  # local import avoids circular dep
+            )
 
-        _xgb_x, _ = _xgb_prep(train_df.sample(min(200, len(train_df)), random_state=0))
-        if not _xgb_x.empty:
-            log_shap_artifacts(xgb_models["q50"], _xgb_x, prefix="xgb")
+            _xgb_x, _ = _xgb_prep(
+                train_df.sample(min(200, len(train_df)), random_state=0)
+            )
+            if not _xgb_x.empty:
+                log_shap_artifacts(xgb_models["q50"], _xgb_x, prefix="xgb")
+        except Exception as e:
+            print(f"  [WARN] MLflow XGBoost SHAP upload skipped: {e}")
 
         xgb_active = mlflow.active_run()
         if xgb_active:
@@ -783,18 +809,26 @@ def train(
             }
         )
 
-        # MLflow: log model artifacts
-        for name, model in cat_models.items():
-            mlflow_cat.log_model(model, f"cat_{name}")
+        # MLflow: log model artifacts (best-effort)
+        try:
+            for name, model in cat_models.items():
+                mlflow_cat.log_model(model, f"cat_{name}")
+        except Exception as e:
+            print(f"  [WARN] MLflow CatBoost artifact upload skipped: {e}")
 
-        # MLflow: log SHAP interpretability plots
-        from ml.models.catboost import (
-            _prep as _cat_prep,  # local import avoids circular dep
-        )
+        # MLflow: log SHAP interpretability plots (best-effort)
+        try:
+            from ml.models.catboost import (
+                _prep as _cat_prep,  # local import avoids circular dep
+            )
 
-        _cat_x, _ = _cat_prep(train_df.sample(min(200, len(train_df)), random_state=0))
-        if not _cat_x.empty:
-            log_shap_artifacts(cat_models["q50"], _cat_x, prefix="cat")
+            _cat_x, _ = _cat_prep(
+                train_df.sample(min(200, len(train_df)), random_state=0)
+            )
+            if not _cat_x.empty:
+                log_shap_artifacts(cat_models["q50"], _cat_x, prefix="cat")
+        except Exception as e:
+            print(f"  [WARN] MLflow CatBoost SHAP upload skipped: {e}")
 
         cat_active = mlflow.active_run()
         if cat_active:
@@ -881,8 +915,11 @@ def train(
             }
         )
 
-        # MLflow: log ensemble q50 meta-model artifact for Model Registry
-        mlflow_sklearn.log_model(ens_models["q50"], "ensemble_q50")
+        # MLflow: log ensemble q50 meta-model artifact for Model Registry (best-effort)
+        try:
+            mlflow_sklearn.log_model(ens_models["q50"], "ensemble_q50")
+        except Exception as e:
+            print(f"  [WARN] MLflow ensemble artifact upload skipped: {e}")
 
         # Capture run_id before the context manager closes
         ens_run_id = mlflow.active_run().info.run_id

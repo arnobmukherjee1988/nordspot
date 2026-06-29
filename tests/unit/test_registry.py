@@ -4,9 +4,9 @@ register_and_promote() is tested against a mocked MlflowClient so no real
 tracking server, artifact store, or model file is required.
 
 Four scenarios are covered:
-  1. No Production version exists          -> unconditional promotion
-  2. New MAE < Production MAE              -> promotion, old version archived
-  3. New MAE >= Production MAE              -> Staging (challenger)
+  1. No champion version exists          -> unconditional promotion
+  2. New MAE < champion MAE              -> promotion, old alias removed
+  3. New MAE >= champion MAE             -> challenger alias assigned
   4. Version is tagged with the correct MAE value
 """
 
@@ -14,17 +14,19 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, call, patch
 
+import mlflow
+
 from ml.registry import register_and_promote
 
 # -- Helper --------------------------------------------------------------------
 
 
-def _make_client(prod_mae: float | None = None) -> MagicMock:
-    """Return a mock MlflowClient with an optional Production version.
+def _make_client(champion_mae: float | None = None) -> MagicMock:
+    """Return a mock MlflowClient with an optional champion version.
 
     Args:
-        prod_mae: MAE tag on the existing Production version. Pass None to
-                  simulate the registry having no Production version yet.
+        champion_mae: MAE tag on the existing champion version. Pass None to
+                      simulate the registry having no champion version yet.
     """
     client = MagicMock()
 
@@ -35,14 +37,16 @@ def _make_client(prod_mae: float | None = None) -> MagicMock:
     client.create_model_version.return_value = new_mv
     client.get_model_version.return_value = new_mv  # for READY polling
 
-    # get_latest_versions("Production") -> empty or one prod version
-    if prod_mae is None:
-        client.get_latest_versions.return_value = []
+    # get_model_version_by_alias("champion") -> raises or returns champion
+    if champion_mae is None:
+        client.get_model_version_by_alias.side_effect = (
+            mlflow.exceptions.MlflowException("No alias")
+        )
     else:
-        prod_mv = MagicMock()
-        prod_mv.version = "1"
-        prod_mv.tags = {"mae": str(prod_mae)}
-        client.get_latest_versions.return_value = [prod_mv]
+        champ_mv = MagicMock()
+        champ_mv.version = "1"
+        champ_mv.tags = {"mae": str(champion_mae)}
+        client.get_model_version_by_alias.return_value = champ_mv
 
     return client
 
@@ -50,53 +54,54 @@ def _make_client(prod_mae: float | None = None) -> MagicMock:
 # -- Tests ---------------------------------------------------------------------
 
 
-def test_promotes_when_no_production_exists():
-    """First run: no Production version -> unconditional promotion."""
-    client = _make_client(prod_mae=None)
+def test_promotes_when_no_champion_exists():
+    """First run: no champion version -> unconditional promotion."""
+    client = _make_client(champion_mae=None)
     with patch("ml.registry.MlflowClient", return_value=client):
         result = register_and_promote(run_id="abc123", mae=12.0)
 
     assert result["action"] == "promoted"
     assert result["mae"] == 12.0
-    client.transition_model_version_stage.assert_called_with(
-        "nordspot-ensemble", "2", "Production"
+    client.set_registered_model_alias.assert_called_with(
+        "nordspot-ensemble", "champion", "2"
     )
 
 
 def test_promotes_when_new_mae_is_better():
-    """New MAE (12.0) < Production MAE (15.0) -> promote new, archive old."""
-    client = _make_client(prod_mae=15.0)
+    """New MAE (12.0) < champion MAE (15.0) -> promote new, remove old alias."""
+    client = _make_client(champion_mae=15.0)
     with patch("ml.registry.MlflowClient", return_value=client):
         result = register_and_promote(run_id="abc123", mae=12.0)
 
     assert result["action"] == "promoted"
     assert result["prev_mae"] == 15.0
 
-    calls = client.transition_model_version_stage.call_args_list
+    alias_calls = client.set_registered_model_alias.call_args_list
+    delete_calls = client.delete_registered_model_alias.call_args_list
     assert (
-        call("nordspot-ensemble", "1", "Archived") in calls
-    ), "Old Production version should be Archived"
+        call("nordspot-ensemble", "champion", "2") in alias_calls
+    ), "New version should get champion alias"
     assert (
-        call("nordspot-ensemble", "2", "Production") in calls
-    ), "New version should be promoted to Production"
+        call("nordspot-ensemble", "champion") in delete_calls
+    ), "Old champion alias should be removed"
 
 
 def test_stays_challenger_when_new_mae_is_worse():
-    """New MAE (18.0) >= Production MAE (15.0) -> Staging (challenger)."""
-    client = _make_client(prod_mae=15.0)
+    """New MAE (18.0) >= champion MAE (15.0) -> challenger alias assigned."""
+    client = _make_client(champion_mae=15.0)
     with patch("ml.registry.MlflowClient", return_value=client):
         result = register_and_promote(run_id="abc123", mae=18.0)
 
     assert result["action"] == "challenger"
     assert result["prod_mae"] == 15.0
-    client.transition_model_version_stage.assert_called_with(
-        "nordspot-ensemble", "2", "Staging"
+    client.set_registered_model_alias.assert_called_with(
+        "nordspot-ensemble", "challenger", "2"
     )
 
 
 def test_new_version_is_tagged_with_mae():
     """set_model_version_tag must be called with key='mae' and the rounded value."""
-    client = _make_client(prod_mae=None)
+    client = _make_client(champion_mae=None)
     with patch("ml.registry.MlflowClient", return_value=client):
         register_and_promote(run_id="deadbeef", mae=9.1234)
 

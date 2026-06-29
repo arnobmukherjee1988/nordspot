@@ -98,6 +98,8 @@ def train(df: pd.DataFrame, verbose: bool = True) -> dict[int, tuple]:
         Dict mapping hour -> (scaler, lasso_cv_model, rq05, rq95, best_alpha).
     """
     df = df.copy()
+    if "valid_time" in df.columns and not isinstance(df.index, pd.DatetimeIndex):
+        df = df.set_index("valid_time")
     df["_hour"] = df.index.hour
 
     trained = {}
@@ -162,14 +164,16 @@ def train(df: pd.DataFrame, verbose: bool = True) -> dict[int, tuple]:
 
 def predict(df: pd.DataFrame) -> pd.DataFrame:
     """Load saved LEAR models and return quantile forecasts."""
+    df = df.copy()
+    if "valid_time" in df.columns and not isinstance(df.index, pd.DatetimeIndex):
+        df = df.set_index("valid_time")
+    df["_hour"] = df.index.hour
+
     out = pd.DataFrame(
         index=df.index,
         columns=["lear_q05", "lear_q50", "lear_q95"],
         dtype=float,
     )
-
-    df = df.copy()
-    df["_hour"] = df.index.hour
 
     for h in range(24):
         path = _model_path(h)

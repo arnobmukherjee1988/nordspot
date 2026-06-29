@@ -1,22 +1,17 @@
 """MLflow Model Registry: automatic promotion of the NordSpot ensemble model.
 
 After each training run, register_and_promote() compares the new ensemble's MAE
-against the currently Production-registered model and promotes automatically:
+against the current champion and promotes automatically:
 
-    new MAE < prod MAE  ->  new version -> Production, old version -> Archived
-    new MAE >= prod MAE  ->  new version -> Staging   (tagged "challenger")
-    no Production yet   ->  new version -> Production unconditionally
+    new MAE < champion MAE  ->  new version gets 'champion' alias, old loses it
+    new MAE >= champion MAE ->  new version gets 'challenger' alias
+    no champion yet         ->  new version -> champion unconditionally
 
-This implements the standard MLOps "shadow promotion" pattern - regressions
-cannot reach Production without being detected by the MAE gate.
+Uses MLflow aliases (not deprecated stages). Alias mapping:
+    champion   - current serving model (replaces Production stage)
+    challenger - better than nothing, but not beating champion (replaces Staging)
 
-The MAE is written as a version tag so comparisons are self-contained: no
-external database is needed beyond the MLflow Registry itself.
-
-Stages used:
-    Production  - current serving model
-    Staging     - challenger: better than nothing, but not beating Production
-    Archived    - superseded Production versions (kept for rollback audit)
+The MAE is written as a version tag so comparisons are self-contained.
 """
 
 from __future__ import annotations
@@ -34,6 +29,17 @@ _ENSEMBLE_ARTIFACT_PATH = "ensemble_q50"
 _READY_POLL_INTERVAL_S = 1
 _READY_POLL_RETRIES = 30
 
+ALIAS_CHAMPION = "champion"
+ALIAS_CHALLENGER = "challenger"
+
+
+def _get_champion(client: MlflowClient, model_name: str):
+    """Return the current champion ModelVersion, or None."""
+    try:
+        return client.get_model_version_by_alias(model_name, ALIAS_CHAMPION)
+    except mlflow.exceptions.MlflowException:
+        return None
+
 
 def register_and_promote(
     run_id: str,
@@ -49,8 +55,8 @@ def register_and_promote(
         2. Register a new version from runs:/{run_id}/{artifact_path}.
         3. Wait up to 30 s for the version to reach READY state.
         4. Tag the version with its MAE for future comparisons.
-        5. Fetch the current Production version and compare MAEs.
-        6. Promote (-> Production) or demote (-> Staging / "challenger").
+        5. Fetch the current champion and compare MAEs.
+        6. Assign 'champion' or 'challenger' alias accordingly.
 
     Args:
         run_id:        MLflow run ID from the ensemble training block.
@@ -61,11 +67,10 @@ def register_and_promote(
 
     Returns:
         dict with keys:
-            version  (str)  - new version number
+            version  (str)   - new version number
             mae      (float) - MAE of the new version
-            action   (str)  - "promoted" | "challenger"
-            prev_mae (float, optional) - MAE of the prior Production version
-            prod_mae (float, optional) - same as prev_mae when challenger
+            action   (str)   - "promoted" | "challenger"
+            prev_mae (float, optional) - MAE of the prior champion
     """
     uri = tracking_uri or get_tracking_uri()
     client = MlflowClient(tracking_uri=uri)
@@ -94,67 +99,62 @@ def register_and_promote(
     client.set_model_version_tag(model_name, version, "mae", str(round(mae, 4)))
     client.set_model_version_tag(model_name, version, "run_id_short", run_id[:8])
 
-    # -- 5. Fetch current Production (if any) ----------------------------------
-    prod_versions = client.get_latest_versions(model_name, stages=["Production"])
+    # -- 5. Fetch current champion (if any) ------------------------------------
+    champion = _get_champion(client, model_name)
 
-    if not prod_versions:
-        # No Production yet - promote unconditionally
-        client.transition_model_version_stage(model_name, version, "Production")
+    if champion is None:
+        # No champion yet - promote unconditionally
+        client.set_registered_model_alias(model_name, ALIAS_CHAMPION, version)
+        client.set_model_version_tag(model_name, version, "registry_action", "promoted")
+        print(f"  [OK] v{version} -> champion  " f"(MAE={mae:.4f}, no prior champion)")
+        return {"version": version, "mae": mae, "action": "promoted"}
+
+    champ_mae_tag = champion.tags.get("mae")
+
+    if champ_mae_tag is None:
+        # Champion exists but has no MAE tag - treat as unknown quality, promote.
+        client.delete_registered_model_alias(model_name, ALIAS_CHAMPION)
+        client.set_registered_model_alias(model_name, ALIAS_CHAMPION, version)
         client.set_model_version_tag(model_name, version, "registry_action", "promoted")
         print(
-            f"  [OK] v{version} -> Production  "
-            f"(MAE={mae:.4f}, no prior production model)"
+            f"  [OK] v{version} -> champion  "
+            f"(MAE={mae:.4f}, prior champion v{champion.version} had no MAE tag)"
         )
         return {"version": version, "mae": mae, "action": "promoted"}
 
-    prod_mv = prod_versions[0]
-    prod_mae_tag = prod_mv.tags.get("mae")
-
-    if prod_mae_tag is None:
-        # Production exists but has no MAE tag (registered outside this system).
-        # Treat as unknown quality - promote the new version and archive the old.
-        client.transition_model_version_stage(model_name, prod_mv.version, "Archived")
-        client.transition_model_version_stage(model_name, version, "Production")
-        client.set_model_version_tag(model_name, version, "registry_action", "promoted")
-        print(
-            f"  [OK] v{version} -> Production  "
-            f"(MAE={mae:.4f}, prod v{prod_mv.version} had no MAE tag)"
-        )
-        return {"version": version, "mae": mae, "action": "promoted"}
-
-    prod_mae = float(prod_mae_tag)
+    champ_mae = float(champ_mae_tag)
 
     # -- 6. Compare and promote or keep as challenger --------------------------
-    if mae < prod_mae:
-        # New model improves on Production - promote and archive the old
-        client.transition_model_version_stage(model_name, prod_mv.version, "Archived")
-        client.transition_model_version_stage(model_name, version, "Production")
+    if mae < champ_mae:
+        # New model improves on champion - reassign alias
+        client.delete_registered_model_alias(model_name, ALIAS_CHAMPION)
+        client.set_registered_model_alias(model_name, ALIAS_CHAMPION, version)
         client.set_model_version_tag(model_name, version, "registry_action", "promoted")
-        improvement = prod_mae - mae
+        improvement = champ_mae - mae
         print(
-            f"  [OK] v{version} -> Production  "
-            f"(MAE={mae:.4f} < prod MAE={prod_mae:.4f}, delta={improvement:.4f})"
+            f"  [OK] v{version} -> champion  "
+            f"(MAE={mae:.4f} < champion MAE={champ_mae:.4f}, delta={improvement:.4f})"
         )
         return {
             "version": version,
             "mae": mae,
             "action": "promoted",
-            "prev_mae": prod_mae,
+            "prev_mae": champ_mae,
         }
     else:
-        # New model does not improve - send to Staging as a challenger
-        client.transition_model_version_stage(model_name, version, "Staging")
+        # New model does not improve - assign challenger alias
+        client.set_registered_model_alias(model_name, ALIAS_CHALLENGER, version)
         client.set_model_version_tag(
             model_name, version, "registry_action", "challenger"
         )
-        gap = mae - prod_mae
+        gap = mae - champ_mae
         print(
-            f"  [--] v{version} -> Staging (challenger)  "
-            f"(MAE={mae:.4f} >= prod MAE={prod_mae:.4f}, gap={gap:.4f})"
+            f"  [--] v{version} -> challenger  "
+            f"(MAE={mae:.4f} >= champion MAE={champ_mae:.4f}, gap={gap:.4f})"
         )
         return {
             "version": version,
             "mae": mae,
             "action": "challenger",
-            "prod_mae": prod_mae,
+            "prod_mae": champ_mae,
         }
