@@ -89,6 +89,11 @@ services:
     environment:
       MLFLOW_TRACKING_URI: http://mlflow:5000
       TIMEDB_CH_URL: http://nordspot:nordspot@clickhouse:8123/nordspot
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_USER: nordspot
+      CLICKHOUSE_PASSWORD: nordspot
+      CLICKHOUSE_DB: nordspot
     ports:
       - "8000:8000"
     volumes:
