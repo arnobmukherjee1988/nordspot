@@ -35,8 +35,8 @@ Metrics key:
 
 ## Fix — 2026-05-13: retention="forever" for all historical data
 
-**Change:** Re-fetched all prices and weather with `retention="forever"`.  
-ClickHouse TTL for `medium` tier is 1095 days (3 years from `valid_time`),  
+**Change:** Re-fetched all prices and weather with `retention="forever"`.
+ClickHouse TTL for `medium` tier is 1095 days (3 years from `valid_time`),
 causing deletion of all data before 2023-05-15.
 
 **Result after re-fetch + retrain:**
@@ -106,7 +106,7 @@ causing deletion of all data before 2023-05-15.
 
 ## Run — 2026-05-13 19:38 UTC
 
-**Train:** 2020-01-01 → 2026-02-12  (53,635 labelled rows)  
+**Train:** 2020-01-01 → 2026-02-12  (53,635 labelled rows)
 **Holdout:** 2026-02-12 → 2026-05-13
 
 **Note:** v2 improvements: LassoCV alpha, cross-hour lags 23h/25h, 72h/336h lags, hour_x_month/weekend_x_hour/temp_x_hour interactions, LightGBM early stopping + recency weights + stronger regularisation
@@ -139,7 +139,7 @@ causing deletion of all data before 2023-05-15.
 
 ## Run — 2026-05-13 20:07 UTC
 
-**Train:** 2020-01-01 → 2026-02-12  (53,636 labelled rows)  
+**Train:** 2020-01-01 → 2026-02-12  (53,636 labelled rows)
 **Holdout:** 2026-02-12 → 2026-05-13
 
 **Note:** Store forecasts to TimeDB, add training cache
@@ -172,7 +172,7 @@ causing deletion of all data before 2023-05-15.
 
 ## Run — 2026-05-14 07:09 UTC
 
-**Train:** 2020-01-01 → 2026-02-13  (53,647 labelled rows)  
+**Train:** 2020-01-01 → 2026-02-13  (53,647 labelled rows)
 **Holdout:** 2026-02-13 → 2026-05-14
 
 **Note:** Routine training run
@@ -219,7 +219,7 @@ causing deletion of all data before 2023-05-15.
 
 ## Run — 2026-05-14 18:40 UTC
 
-**Train:** 2020-01-01 → 2026-02-13  (53,658 labelled rows)  
+**Train:** 2020-01-01 → 2026-02-13  (53,658 labelled rows)
 **Holdout:** 2026-02-13 → 2026-05-14
 
 **Note:** Conformal calibration + run_eval runner added
@@ -252,7 +252,7 @@ causing deletion of all data before 2023-05-15.
 
 ## Run — 2026-05-14 18:45 UTC
 
-**Train:** 2020-01-01 → 2026-02-13  (53,658 labelled rows)  
+**Train:** 2020-01-01 → 2026-02-13  (53,658 labelled rows)
 **Holdout:** 2026-02-13 → 2026-05-14
 
 **Note:** Conformal calibration + run_eval runner added
@@ -285,7 +285,7 @@ causing deletion of all data before 2023-05-15.
 
 ## Run — 2026-05-15 05:33 UTC
 
-**Train:** 2020-01-01 → 2026-02-14  (53,669 labelled rows)  
+**Train:** 2020-01-01 → 2026-02-14  (53,669 labelled rows)
 **Holdout:** 2026-02-14 → 2026-05-15
 
 **Note:** Fix conformal re-calibration + table formatting
@@ -318,7 +318,7 @@ causing deletion of all data before 2023-05-15.
 
 ## Run — 2026-05-15 05:44 UTC
 
-**Train:** 2020-01-01 -> 2026-02-14  (53,669 labelled rows)  
+**Train:** 2020-01-01 -> 2026-02-14  (53,669 labelled rows)
 **Holdout:** 2026-02-14 -> 2026-05-15
 
 **Note:** Fix conformal re-calibration + table formatting
@@ -351,7 +351,7 @@ causing deletion of all data before 2023-05-15.
 
 ## Run — 2026-06-03 14:50 UTC
 
-**Train:** 2020-01-01 -> 2026-03-05  (54,134 labelled rows)  
+**Train:** 2020-01-01 -> 2026-03-05  (54,134 labelled rows)
 **Holdout:** 2026-03-05 -> 2026-06-03
 
 **Note:** Routine training run
@@ -384,7 +384,7 @@ causing deletion of all data before 2023-05-15.
 
 ## Run — 2026-06-06 08:17 UTC
 
-**Train:** 2020-01-01 -> 2026-03-08  (54,200 labelled rows)  
+**Train:** 2020-01-01 -> 2026-03-08  (54,200 labelled rows)
 **Holdout:** 2026-03-08 -> 2026-06-06
 
 **Note:** Routine training run
@@ -417,7 +417,7 @@ causing deletion of all data before 2023-05-15.
 
 ## Run — 2026-06-08 11:20 UTC
 
-**Train:** 2020-01-01 -> 2026-03-10  (54,251 labelled rows)  
+**Train:** 2020-01-01 -> 2026-03-10  (54,251 labelled rows)
 **Holdout:** 2026-03-10 -> 2026-06-08
 
 **Note:** Routine training run
@@ -450,7 +450,7 @@ causing deletion of all data before 2023-05-15.
 
 ## Run — 2026-06-09 18:57 UTC
 
-**Train:** 2020-01-01 -> 2026-03-11  (54,282 labelled rows)  
+**Train:** 2020-01-01 -> 2026-03-11  (54,282 labelled rows)
 **Holdout:** 2026-03-11 -> 2026-06-09
 
 **Note:** Routine training run
@@ -469,7 +469,7 @@ causing deletion of all data before 2023-05-15.
 
 ## Run — 2026-06-09 19:35 UTC
 
-**Train:** 2020-01-01 -> 2026-03-11  (54,283 labelled rows)  
+**Train:** 2020-01-01 -> 2026-03-11  (54,283 labelled rows)
 **Holdout:** 2026-03-11 -> 2026-06-09
 
 **Note:** Routine training run
@@ -497,3 +497,5 @@ causing deletion of all data before 2023-05-15.
 
 **LightGBM early stopping best iterations:** 344, 249, 109
 
+
+---

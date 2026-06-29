@@ -59,6 +59,7 @@ def _run_train_for_zone(fake_df: pd.DataFrame, zone: str) -> None:
         patch("ml.train.log_shap_artifacts"),
         patch("ml.train.register_and_promote"),
         patch("mlflow.sklearn.log_model"),
+        patch("ml.train._append_log"),  # prevent writes to model/MODEL_LOG.md
         # ── LGBM ─────────────────────────────────────────────────
         patch(
             "ml.models.lgbm.train",

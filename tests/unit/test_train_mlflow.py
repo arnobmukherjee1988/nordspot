@@ -203,6 +203,7 @@ def _run_train(note: str = "test run") -> None:
         # ── Registry (Story 4.7) ──────────────────────────────────────────────
         patch("ml.train.register_and_promote"),  # skip Model Registry in unit tests
         patch("mlflow.sklearn.log_model"),  # skip sklearn artifact serialisation
+        patch("ml.train._append_log"),  # prevent writes to model/MODEL_LOG.md
     ]
 
     with ExitStack() as stack:
