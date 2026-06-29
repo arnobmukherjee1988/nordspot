@@ -29,9 +29,12 @@ filterwarnings = [
     # GE 0.18.x triggers marshmallow's ChangedInMarshmallow4Warning internally.
     # Unfixable from our side — suppress by message pattern.
     "ignore:.*Number.*field should not be instantiated.*",
-    # holidays v0.x emits FutureIncompatibilityWarning at import time.
-    # Filter by module origin — avoids .match() vs leading-newline regex issues.
-    "ignore::Warning:holidays",
+    # holidays v0.x emits FutureIncompatibilityWarning at import time from
+    # holidays.deprecations.v1_incompatibility. Match by message text — the most
+    # reliable approach since it bypasses category/module resolution entirely.
+    # Dependency is pinned to holidays==0.96 in requirements.txt per the warning's
+    # own recommendation; this filter suppresses the runtime noise.
+    "ignore:.*future version incompatibility.*",
     # MLflow 2.x uses Pydantic v1-style decorators deprecated in Pydantic v2.
     # These originate entirely inside mlflow — unfixable from our side.
     "ignore::pydantic.warnings.PydanticDeprecatedSince20:mlflow",
@@ -39,4 +42,7 @@ filterwarnings = [
     # xarray uses bare np.timedelta64("NaT") which triggers numpy 2.x DeprecationWarning.
     # Triggered at import time by mlflow — unfixable from our side.
     "ignore:.*generic.*unit.*NumPy timedelta.*deprecated.*:DeprecationWarning:xarray",
+    # Starlette TestClient emits a deprecation warning recommending httpx2.
+    # httpx2 is not yet a stable package; suppress until starlette stabilises.
+    "ignore:.*httpx2.*",
 ]

@@ -1,11 +1,61 @@
 # NordSpot FastAPI serving image
-# Implemented in Epic 5. This stub ensures the file exists in the correct location.
 #
-# FROM python:3.11-slim
-# WORKDIR /app
-# COPY requirements.txt .
-# RUN pip install --no-cache-dir -r requirements.txt
-# COPY api/ ./api/
-# COPY ml/ ./ml/
-# EXPOSE 8000
-# CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Build:  docker build -f Dockerfile.api -t nordspot-api .
+# Run:    docker run -p 8000:8000 --env-file .env nordspot-api
+#
+# The image is intentionally slim — only the packages needed to serve the API
+# are installed. Training dependencies (lightgbm, xgboost, catboost, shap,
+# great-expectations, dbt, feast) are NOT included.
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install system dependencies
+#   gcc      — compile extensions (catboost, clickhouse-connect)
+#   libgomp1 — LightGBM OpenMP multi-threading
+#   git      — pip needs git to install timedb from GitHub
+#   wget     — used by the docker-compose healthcheck (GET /health)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libgomp1 \
+    git \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies (only what the serving path needs)
+RUN pip install --no-cache-dir \
+    "fastapi>=0.111,<1.0" \
+    "uvicorn[standard]>=0.29,<1.0" \
+    "httpx>=0.27,<1.0" \
+    "pydantic>=2.0" \
+    "mlflow>=2.13,<3.0" \
+    "numpy>=2.0.0" \
+    "pandas==2.3.3" \
+    "scikit-learn==1.8.0" \
+    "lightgbm==4.6.0" \
+    "xgboost>=2.0,<3.0" \
+    "catboost>=1.2,<2.0" \
+    "clickhouse-connect>=0.7" \
+    "requests>=2.31" \
+    "holidays==0.96" \
+    "python-dotenv==1.2.2" \
+    "git+https://github.com/rebase-energy/timedb.git@b07591e4c1a172a55d271affe2063d49a4f50ce8"
+
+# Copy application code
+COPY api/      ./api/
+COPY ml/       ./ml/
+COPY pipeline/ ./pipeline/
+COPY db/       ./db/
+COPY sdk/      ./sdk/
+COPY config/   ./config/
+COPY model/    ./model/
+
+# Expose API port
+EXPOSE 8000
+
+# Non-root user for security
+RUN adduser --disabled-password --gecos "" nordspot
+USER nordspot
+
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
