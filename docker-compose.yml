@@ -72,18 +72,26 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # ── FastAPI serving (stub — implemented in Epic 5) ─────────────────────────
-  # api:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.api
-  #   container_name: nordspot_api
-  #   env_file: .env
-  #   ports:
-  #     - "8000:8000"
-  #   depends_on:
-  #     - redis
-  #   restart: unless-stopped
+  # ── FastAPI serving ────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: nordspot_api
+    env_file: .env
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+    depends_on:
+      - redis
+      - mlflow
+    restart: unless-stopped
 
   # ── Airflow (stub — implemented in Epic 2) ─────────────────────────────────
   # airflow-webserver:
