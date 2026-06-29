@@ -51,6 +51,12 @@ services:
       --port 5000
       --backend-store-uri sqlite:///mlflow/mlflow.db
       --default-artifact-root /mlflow/artifacts
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
     restart: unless-stopped
 
   # ── Streamlit dashboard ────────────────────────────────────────────────────
@@ -81,16 +87,23 @@ services:
     env_file: .env
     environment:
       MLFLOW_TRACKING_URI: http://mlflow:5000
+      TIMEDB_CH_URL: http://nordspot:nordspot@clickhouse:8123/nordspot
     ports:
       - "8000:8000"
+    volumes:
+      - ./model:/app/model
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/health"]
       interval: 15s
       timeout: 5s
       retries: 4
     depends_on:
-      - redis
-      - mlflow
+      clickhouse:
+        condition: service_healthy
+      mlflow:
+        condition: service_healthy
+      redis:
+        condition: service_started
     restart: unless-stopped
 
   # ── Airflow (stub — implemented in Epic 2) ─────────────────────────────────
