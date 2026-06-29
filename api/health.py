@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -50,12 +50,13 @@ class HealthResponse(BaseModel):
     ),
     tags=["Health"],
 )
-async def health() -> HealthResponse:
+async def health(request: Request) -> HealthResponse:
     """Return API health status and model metadata."""
+    store = request.app.state.model_store
     return HealthResponse(
         status="ok",
-        model_version="not_loaded",  # Story 5.2 will populate from MLflow Registry
-        trained_at=None,  # Story 5.2 will populate from model metadata
+        model_version=store.model_version,
+        trained_at=store.trained_at,
         zones_covered=["SE1", "SE2", "SE3", "SE4"],
         api_version="v1",
         timestamp=datetime.now(timezone.utc),

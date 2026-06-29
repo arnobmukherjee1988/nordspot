@@ -24,6 +24,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from api.health import router as health_router
+from api.loader import load_production_models
+from api.model_store import ModelStore
 from api.routers.forecast import router as forecast_router
 
 # ── Logging ───────────────────────────────────────────────────────────────────
@@ -41,7 +43,7 @@ logger = logging.getLogger("nordspot.api")
 async def lifespan(app: FastAPI):  # noqa: ANN001
     """Manage application startup and shutdown."""
     logger.info("NordSpot API starting up  (version=%s)", app.version)
-    # Story 5.2: load Production models from MLflow Registry here
+    app.state.model_store = load_production_models()
     yield
     logger.info("NordSpot API shutting down")
 
@@ -97,3 +99,7 @@ async def log_requests(request: Request, call_next):
 
 app.include_router(health_router)
 app.include_router(forecast_router, prefix="/v1")
+
+# Default state so TestClient (which skips lifespan) has a well-typed store.
+# The lifespan overwrites this with a real ModelStore on production startup.
+app.state.model_store = ModelStore()
