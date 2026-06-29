@@ -45,7 +45,7 @@ def test_null_temperature_fails():
 
 def test_temperature_too_high_fails():
     df = _good_df()
-    df.loc[0, "temperature_2m"] = 75.0  # above 60°C cap
+    df.loc[0, "temperature_2m"] = 75.0  # above 60degC cap
     gdf = validate_weather(df)
     result = gdf.validate()
     assert result["success"] is False
@@ -53,7 +53,7 @@ def test_temperature_too_high_fails():
 
 def test_temperature_too_low_fails():
     df = _good_df()
-    df.loc[0, "temperature_2m"] = -60.0  # below -50°C floor
+    df.loc[0, "temperature_2m"] = -60.0  # below -50degC floor
     gdf = validate_weather(df)
     result = gdf.validate()
     assert result["success"] is False

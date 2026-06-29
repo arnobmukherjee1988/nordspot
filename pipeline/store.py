@@ -25,7 +25,7 @@ def write_series(
         td:             Active TimeDBClient.
         series_id:      Integer series ID from db.schema.SERIES.
         df:             DataFrame with valid_time + value columns.
-        retention:      TimeDB retention tier — "short" | "medium" | "long".
+        retention:      TimeDB retention tier - "short" | "medium" | "long".
         knowledge_time: When the data became known (defaults to now).
     """
     df = df.copy()

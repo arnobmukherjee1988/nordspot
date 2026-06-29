@@ -6,14 +6,14 @@ and date range.  All features are temporally safe at day-ahead gate closure
 
 Feature groups
 --------------
-1. Price lags & rolling stats   — autoregressive + volatility context
-2. Calendar                     — hour, weekday, month, holiday, cyclical encoding
-3. Weather                      — temperature, wind, solar irradiance + interactions
-4. Generation                   — wind MW, solar MW from Silver (ClickHouse)
-5. Load                         — actual load MW from Silver (ClickHouse)
-6. Cross-border                 — net exchange position from Silver (ClickHouse)
+1. Price lags & rolling stats   - autoregressive + volatility context
+2. Calendar                     - hour, weekday, month, holiday, cyclical encoding
+3. Weather                      - temperature, wind, solar irradiance + interactions
+4. Generation                   - wind MW, solar MW from Silver (ClickHouse)
+5. Load                         - actual load MW from Silver (ClickHouse)
+6. Cross-border                 - net exchange position from Silver (ClickHouse)
 
-⚠️  DESIGN CONSTRAINT (see PLATFORM_PLAN.md Epic 3):
+WARNING:  DESIGN CONSTRAINT (see PLATFORM_PLAN.md Epic 3):
     Weather features at training time must come from the Open-Meteo historical
     *forecast* archive, not the observation archive.  At inference time, use
     the live forecast API.  Both must be the same signal type to avoid
@@ -31,11 +31,11 @@ import pandas as pd
 from config.zone_config import ZoneConfig
 from db.schema import SERIES
 
-# ── TimeDB helpers ────────────────────────────────────────────────────────────
+# -- TimeDB helpers ------------------------------------------------------------
 
 
 def _read_series(td, series_id: int) -> pd.Series:
-    """Pull a single series from TimeDB → hourly pandas Series (UTC index)."""
+    """Pull a single series from TimeDB -> hourly pandas Series (UTC index)."""
     df = td.read(series_ids=[series_id], retention="forever")
     if len(df) == 0:
         return pd.Series(dtype=float, name=series_id)
@@ -44,7 +44,7 @@ def _read_series(td, series_id: int) -> pd.Series:
     return pdf.set_index("valid_time")["value"].sort_index()
 
 
-# ── Pure transformation helpers (all testable without DB) ────────────────────
+# -- Pure transformation helpers (all testable without DB) --------------------
 
 
 def _build_price_lags(price: pd.Series) -> list[pd.Series]:
@@ -73,7 +73,7 @@ def _build_rolling_stats(price: pd.Series) -> list[pd.Series]:
 
 def _build_calendar(idx: pd.DatetimeIndex) -> pd.DataFrame:
     """Calendar features with cyclical encoding."""
-    _se_holidays = holidays.Sweden()  # lazy init — keeps module-level import clean
+    _se_holidays = holidays.Sweden()  # lazy init - keeps module-level import clean
     cal = pd.DataFrame(index=idx)
     cal["hour"] = idx.hour
     cal["weekday"] = idx.dayofweek
@@ -82,7 +82,7 @@ def _build_calendar(idx: pd.DatetimeIndex) -> pd.DataFrame:
     cal["is_holiday"] = idx.normalize().map(lambda d: int(d.date() in _se_holidays))
     cal["hour_of_week"] = idx.dayofweek * 24 + idx.hour
 
-    # Cyclical encoding — preserves circular distance (e.g. hour 23 ≈ hour 0)
+    # Cyclical encoding - preserves circular distance (e.g. hour 23 ~= hour 0)
     cal["hour_sin"] = np.sin(2 * np.pi * cal["hour"] / 24)
     cal["hour_cos"] = np.cos(2 * np.pi * cal["hour"] / 24)
     cal["weekday_sin"] = np.sin(2 * np.pi * cal["weekday"] / 7)
@@ -108,7 +108,7 @@ def _build_weather_interactions(
     ]
 
 
-# ── ClickHouse Silver readers ─────────────────────────────────────────────────
+# -- ClickHouse Silver readers -------------------------------------------------
 
 
 def _ch_query_df(ch_client, sql: str) -> pd.DataFrame:
@@ -167,8 +167,8 @@ def _read_net_exchange(
     """Compute net exchange position for a zone.
 
     net_exchange = imports_into_zone - exports_from_zone
-    Positive  → zone is a net importer (tighter local supply → higher price).
-    Negative  → zone is a net exporter.
+    Positive  -> zone is a net importer (tighter local supply -> higher price).
+    Negative  -> zone is a net exporter.
     """
     start_s = start.strftime("%Y-%m-%d %H:%M:%S")
     end_s = end.strftime("%Y-%m-%d %H:%M:%S")
@@ -203,7 +203,7 @@ def _read_net_exchange(
     return (imports.subtract(exports, fill_value=0.0)).rename("net_exchange_mw")
 
 
-# ── Main feature builder ──────────────────────────────────────────────────────
+# -- Main feature builder ------------------------------------------------------
 
 
 def build_features(
@@ -247,15 +247,15 @@ def build_features(
     idx = pd.date_range(start, end, freq="h", tz="UTC", inclusive="left")
     eic = zone.entsoe_eic
 
-    # ── Prices ────────────────────────────────────────────────────────────────
+    # -- Prices ----------------------------------------------------------------
     price = _read_series(td, SERIES["prices_raw"]).reindex(idx).rename("price")
     lag_feats = _build_price_lags(price)
     roll_feats = _build_rolling_stats(price)
 
-    # ── Calendar ──────────────────────────────────────────────────────────────
+    # -- Calendar --------------------------------------------------------------
     cal = _build_calendar(idx)
 
-    # ── Weather ───────────────────────────────────────────────────────────────
+    # -- Weather ---------------------------------------------------------------
     temp = (
         _read_series(td, SERIES["weather_temperature"])
         .reindex(idx)
@@ -273,16 +273,16 @@ def build_features(
     )
     weather_interactions = _build_weather_interactions(temp, wind, cal["hour"])
 
-    # ── Generation (Silver / ClickHouse) ─────────────────────────────────────
+    # -- Generation (Silver / ClickHouse) -------------------------------------
     gen_df = _read_generation(ch_client, eic, start, end).reindex(idx)
 
-    # ── Load (Silver / ClickHouse) ────────────────────────────────────────────
+    # -- Load (Silver / ClickHouse) --------------------------------------------
     load_df = _read_load(ch_client, eic, start, end).reindex(idx)
 
-    # ── Cross-border net exchange (Silver / ClickHouse) ───────────────────────
+    # -- Cross-border net exchange (Silver / ClickHouse) -----------------------
     net_exchange = _read_net_exchange(ch_client, eic, start, end).reindex(idx)
 
-    # ── Assemble ──────────────────────────────────────────────────────────────
+    # -- Assemble --------------------------------------------------------------
     df = pd.concat(
         [
             price,
@@ -300,12 +300,12 @@ def build_features(
         axis=1,
     )
     df.index.name = "valid_time"
-    df = df.reset_index()  # valid_time as column — required by Feast
+    df = df.reset_index()  # valid_time as column - required by Feast
     df.insert(1, "zone", eic)  # zone column immediately after valid_time
     return df
 
 
-# ── CLI smoke-test ────────────────────────────────────────────────────────────
+# -- CLI smoke-test ------------------------------------------------------------
 
 if __name__ == "__main__":
     from timedb import TimeDBClient
@@ -320,7 +320,7 @@ if __name__ == "__main__":
 
     print(
         f"Building features for {zone.name} ({zone.entsoe_eic}) "
-        f"{start.date()} → {end.date()} ..."
+        f"{start.date()} -> {end.date()} ..."
     )
     df = build_features(zone, start, end, td=td)
 
@@ -330,4 +330,4 @@ if __name__ == "__main__":
     if nan_counts.any():
         print(f"\nNaN counts:\n{nan_counts[nan_counts > 0].to_string()}")
     else:
-        print("\nNo NaNs — feature matrix is complete.")
+        print("\nNo NaNs - feature matrix is complete.")

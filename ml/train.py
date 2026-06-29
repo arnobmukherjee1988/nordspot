@@ -40,7 +40,7 @@ from ml.registry import register_and_promote
 from pipeline.features import build_features
 from pipeline.store import write_series
 
-# ── S3 artifact sync ──────────────────────────────────────────────────────────
+# -- S3 artifact sync ----------------------------------------------------------
 
 
 def _s3_upload_models() -> None:
@@ -48,7 +48,7 @@ def _s3_upload_models() -> None:
 
     Requires AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION,
     and S3_BUCKET in the environment. Silently skips if boto3 is not installed
-    or S3_BUCKET is not set — so local runs without S3 still work.
+    or S3_BUCKET is not set - so local runs without S3 still work.
     """
     bucket = os.getenv("S3_BUCKET")
     if not bucket:
@@ -56,7 +56,7 @@ def _s3_upload_models() -> None:
     try:
         import boto3  # noqa: PLC0415
     except ImportError:
-        print("  [WARN] boto3 not installed — skipping S3 upload")
+        print("  [WARN] boto3 not installed - skipping S3 upload")
         return
 
     s3 = boto3.client("s3")
@@ -73,7 +73,7 @@ MODEL_DIR = Path(os.getenv("MODEL_DIR", "model"))
 MODEL_DIR.mkdir(exist_ok=True)
 
 
-# ── Training cache ────────────────────────────────────────────────────────────
+# -- Training cache ------------------------------------------------------------
 
 
 def _should_skip_training(td: TimeDBClient) -> bool:
@@ -132,7 +132,7 @@ def _write_forecasts_to_timedb(
     """Persist holdout-period forecasts to TimeDB with the run's knowledge_time.
 
     Using knowledge_time lets you later ask: "what did the model predict for
-    <valid_time> as of <knowledge_time>?" — the core bitemporal use-case.
+    <valid_time> as of <knowledge_time>?" - the core bitemporal use-case.
     """
     mapping = [
         ("lgbm_q05", lgbm_val["lgbm_q05"]),
@@ -163,7 +163,7 @@ def _write_forecasts_to_timedb(
     )
 
 
-# ── Metrics computation ───────────────────────────────────────────────────────
+# -- Metrics computation -------------------------------------------------------
 
 
 def _compute_metrics(
@@ -229,7 +229,7 @@ def _compute_metrics(
     }
 
 
-# ── Model log ─────────────────────────────────────────────────────────────────
+# -- Model log -----------------------------------------------------------------
 
 
 def _append_log(
@@ -268,7 +268,7 @@ def _append_log(
 
     entry_lines = [
         "\n---\n",
-        f"## Run — {run_time} UTC\n",
+        f"## Run - {run_time} UTC\n",
         f"**Train:** {train_start} -> {train_end}  ({n_train:,} labelled rows)  ",
         f"**Holdout:** {val_start} -> {val_end}\n",
         f"**Note:** {note}\n",
@@ -334,7 +334,7 @@ def _append_log(
     print(f"\n[LOG] Log appended -> {log_path}")
 
 
-# ── Console results table ─────────────────────────────────────────────────────
+# -- Console results table -----------------------------------------------------
 
 
 def _print_metrics_table(
@@ -373,7 +373,7 @@ def _print_metrics_table(
     print(f"{'-' * width}")
 
 
-# ── MLflow: feature importance plot ───────────────────────────────────────────
+# -- MLflow: feature importance plot -------------------------------------------
 
 
 def _log_feature_importance() -> None:
@@ -397,7 +397,7 @@ def _log_feature_importance() -> None:
         print(f"  [WARN] Feature importance plot skipped: {exc}")
 
 
-# ── Main training routine ─────────────────────────────────────────────────────
+# -- Main training routine -----------------------------------------------------
 
 
 def train(
@@ -406,10 +406,10 @@ def train(
     note: str = "Routine training run",
     zone: str = "SE3",
 ) -> None:
-    # Validate and resolve zone config early — raises ValueError on unknown zone
+    # Validate and resolve zone config early - raises ValueError on unknown zone
     zone_cfg = load_zone(zone)
 
-    # ── MLflow: set experiment ────────────────────────────────────────────────
+    # -- MLflow: set experiment ------------------------------------------------
     mlflow.set_tracking_uri(get_tracking_uri())
     mlflow.set_experiment(EXPERIMENTS["lgbm"])
 
@@ -425,9 +425,9 @@ def train(
 
         td = init_schema()
 
-        # ── Time splits ───────────────────────────────────────────────────────
+        # -- Time splits -------------------------------------------------------
         # Timeline:
-        #   |──── training data ────|──── 60d calibration ────|──── 30d test ────|
+        #   |---- training data ----|---- 60d calibration ----|---- 30d test ----|
         #   start              cal_start                  test_start             end
         cal_start = end - timedelta(days=90)
         test_start = end - timedelta(days=30)
@@ -443,7 +443,7 @@ def train(
 
         if labelled < 24 * 30:
             raise RuntimeError(
-                f"Only {labelled} labelled rows — need at least 720. "
+                f"Only {labelled} labelled rows - need at least 720. "
                 "Is ENTSO-E data synced?"
             )
 
@@ -463,7 +463,7 @@ def train(
         print("\nTraining LEAR ...")
         lear.train(train_df)
 
-        # ── Load calibration and test windows ─────────────────────────────────
+        # -- Load calibration and test windows ---------------------------------
         print(
             f"\nLoading calibration window {cal_start.date()} -> {test_start.date()} ..."
         )
@@ -472,7 +472,7 @@ def train(
         print(f"Loading test window {test_start.date()} -> {end.date()} ...")
         test_df = build_features(zone_cfg, test_start, end, td=td)
 
-        # ── Conformal calibration (LightGBM only) — on cal window ONLY ────────
+        # -- Conformal calibration (LightGBM only) - on cal window ONLY --------
         print("\nCalibrating LightGBM prediction intervals (split conformal) ...")
         lgbm_cal_raw = lgbm.predict(cal_df, apply_conformal=False)
         cal_actuals = cal_df["price"]
@@ -483,7 +483,7 @@ def train(
             lgbm_cal_raw["lgbm_q95"][cal_mask],
         )
 
-        # ── Metrics on TEST window ─────────────────────────────────────────────
+        # -- Metrics on TEST window ---------------------------------------------
         print(f"\nEvaluating on test window {test_start.date()} -> {end.date()} ...")
         lgbm_test_raw = lgbm.predict(test_df, apply_conformal=False)
         lear_test = lear.predict(test_df)
@@ -547,7 +547,7 @@ def train(
             lgbm_best_iters=lgbm_best_iters,
         )
 
-        # ── MLflow: log hyperparameters ───────────────────────────────────────
+        # -- MLflow: log hyperparameters ---------------------------------------
         _params_to_log = {
             k: v
             for k, v in lgbm._LGB_PARAMS_BASE.items()
@@ -557,7 +557,7 @@ def train(
         _params_to_log["lgbm_early_stop_rounds"] = lgbm.EARLY_STOP_N
         mlflow.log_params(_params_to_log)
 
-        # ── MLflow: log metrics ───────────────────────────────────────────────
+        # -- MLflow: log metrics -----------------------------------------------
         mlflow.log_metrics(
             {
                 "lgbm_mae": lgbm_m["mae"],
@@ -576,14 +576,14 @@ def train(
             }
         )
 
-        # ── MLflow: log trained model artifacts ───────────────────────────────
+        # -- MLflow: log trained model artifacts -------------------------------
         for name, model in lgbm_models.items():
             mlflow_lgbm.log_model(model, f"lgbm_{name}")
 
-        # ── MLflow: log feature importance plot ───────────────────────────────
+        # -- MLflow: log feature importance plot -------------------------------
         _log_feature_importance()
 
-        # ── MLflow: log SHAP interpretability plots ───────────────────────────
+        # -- MLflow: log SHAP interpretability plots ---------------------------
         _lgbm_x, _ = lgbm._prep(
             train_df.sample(min(200, len(train_df)), random_state=0)
         )
@@ -597,7 +597,7 @@ def train(
                 f"logged to '{EXPERIMENTS['lgbm']}'"
             )
 
-        # ── Write forecasts to TimeDB ─────────────────────────────────────────
+        # -- Write forecasts to TimeDB -----------------------------------------
         print("\nWriting forecasts to TimeDB ...")
         lgbm_full_cal = lgbm.predict(build_features(zone_cfg, cal_start, end, td=td))
         lear_full = lear.predict(build_features(zone_cfg, cal_start, end, td=td))
@@ -620,9 +620,9 @@ def train(
 
         print(f"\n[OK] All models trained. Metrics saved to {metrics_path}")
 
-    # ── XGBoost: separate MLflow run in nordspot-xgboost experiment ───────────
+    # -- XGBoost: separate MLflow run in nordspot-xgboost experiment -----------
     # train_df / cal_df / test_df / test_actuals / test_start are still in scope
-    # from the LGBM block above — Python with-blocks do not create a new scope.
+    # from the LGBM block above - Python with-blocks do not create a new scope.
     mlflow.set_experiment(EXPERIMENTS["xgboost"])
     with mlflow.start_run(run_name=f"xgboost-{end.date()}"):
         mlflow.set_tags(
@@ -712,7 +712,7 @@ def train(
                 f"logged to '{EXPERIMENTS['xgboost']}'"
             )
 
-    # ── CatBoost: separate MLflow run in nordspot-catboost experiment ─────────
+    # -- CatBoost: separate MLflow run in nordspot-catboost experiment ---------
     mlflow.set_experiment(EXPERIMENTS["catboost"])
     with mlflow.start_run(run_name=f"catboost-{end.date()}"):
         mlflow.set_tags(
@@ -803,9 +803,9 @@ def train(
                 f"logged to '{EXPERIMENTS['catboost']}'"
             )
 
-    # ── Ensemble: separate MLflow run in nordspot-ensemble experiment ──────────
+    # -- Ensemble: separate MLflow run in nordspot-ensemble experiment ----------
     # Stacks calibrated LGBM, XGBoost, and CatBoost predictions via Ridge.
-    # No new training data required — base models are already saved to disk.
+    # No new training data required - base models are already saved to disk.
     # train_df / cal_df / test_df / test_actuals / test_start are in scope
     # from the LGBM block above (Python with-blocks do not create a new scope).
     mlflow.set_experiment(EXPERIMENTS["ensemble"])
@@ -820,7 +820,7 @@ def train(
         )
 
         # Generate calibrated base model predictions on cal and test windows.
-        # Each predict() loads saved model files — written by the blocks above.
+        # Each predict() loads saved model files - written by the blocks above.
         print("\nGenerating base model predictions for ensemble meta-learner ...")
         base_cal_preds = pd.concat(
             [
@@ -894,8 +894,8 @@ def train(
                 f"logged to '{EXPERIMENTS['ensemble']}'"
             )
 
-    # ── Model Registry: auto-promote if MAE improves ──────────────────────────
-    # Runs outside the MLflow with-block — no active run required.
+    # -- Model Registry: auto-promote if MAE improves --------------------------
+    # Runs outside the MLflow with-block - no active run required.
     # Model name is zone-specific so each zone has its own registry lineage.
     print("\nChecking Model Registry for auto-promotion ...")
     register_and_promote(
@@ -905,7 +905,7 @@ def train(
     )
 
 
-# ── Multi-zone convenience wrapper ────────────────────────────────────────────
+# -- Multi-zone convenience wrapper --------------------------------------------
 
 
 def train_all_zones(
@@ -917,7 +917,7 @@ def train_all_zones(
 
     Each zone runs as an independent call to train(), producing its own set of
     MLflow runs (lgbm / xgboost / catboost / ensemble) and its own Model Registry
-    entry (nordspot-ensemble-SE1, …, nordspot-ensemble-SE4).
+    entry (nordspot-ensemble-SE1, ..., nordspot-ensemble-SE4).
     """
     for zone_id in load_all_zones().keys():
         print(f"\n{'=' * 64}")

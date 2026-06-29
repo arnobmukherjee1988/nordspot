@@ -2,7 +2,7 @@
 
 /*
     silver_crossborder
-    ──────────────────
+    ------------------
     Cleans and validates the raw crossborder_flows Silver table.
 
     Transforms applied:

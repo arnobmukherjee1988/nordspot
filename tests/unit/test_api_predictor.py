@@ -1,4 +1,4 @@
-"""Unit tests for api/predictor.py — full inference chain.
+"""Unit tests for api/predictor.py - full inference chain.
 
 All base models and the ensemble meta-learner are patched at their source
 modules (ml.models.*) so no pickle files or database connections are needed.
@@ -13,7 +13,7 @@ import pytest
 
 from api.predictor import run_inference
 
-# ── Synthetic data ─────────────────────────────────────────────────────────────
+# -- Synthetic data -------------------------------------------------------------
 
 _N = 24
 
@@ -52,7 +52,7 @@ _BASE_COLS = [
     "cat_q95",
 ]
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
+# -- Fixtures ------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -67,7 +67,7 @@ def mocked_pipeline():
         yield mock_lgbm, mock_xgb, mock_cat, mock_ens
 
 
-# ── Tests ─────────────────────────────────────────────────────────────────────
+# -- Tests ---------------------------------------------------------------------
 
 
 def test_lgbm_predict_called_once(mocked_pipeline):

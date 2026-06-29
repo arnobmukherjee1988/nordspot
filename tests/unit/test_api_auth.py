@@ -1,4 +1,4 @@
-"""Unit tests for api/auth.py — verify_api_key dependency.
+"""Unit tests for api/auth.py - verify_api_key dependency.
 
 Tests run without a real FastAPI request; they call verify_api_key() directly
 after patching os.getenv so no environment variable setup is required.
@@ -17,7 +17,7 @@ from fastapi import HTTPException
 
 from api.auth import verify_api_key
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helpers -------------------------------------------------------------------
 
 
 def _call(api_key, monkeypatch, env_keys="key-abc,key-def"):
@@ -26,7 +26,7 @@ def _call(api_key, monkeypatch, env_keys="key-abc,key-def"):
     return verify_api_key(api_key=api_key)
 
 
-# ── Valid key tests ───────────────────────────────────────────────────────────
+# -- Valid key tests -----------------------------------------------------------
 
 
 def test_valid_key_returns_key(monkeypatch):
@@ -45,7 +45,7 @@ def test_multiple_keys_all_accepted(monkeypatch):
         assert verify_api_key(api_key=key) == key
 
 
-# ── Invalid / missing key tests ───────────────────────────────────────────────
+# -- Invalid / missing key tests -----------------------------------------------
 
 
 def test_missing_key_raises_401(monkeypatch):
@@ -66,7 +66,7 @@ def test_empty_string_key_raises_401(monkeypatch):
     assert exc_info.value.status_code == 401
 
 
-# ── Environment configuration edge cases ─────────────────────────────────────
+# -- Environment configuration edge cases -------------------------------------
 
 
 def test_no_env_var_rejects_all(monkeypatch):

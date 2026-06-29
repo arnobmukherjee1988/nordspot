@@ -1,4 +1,4 @@
-# Lightweight dev stack — starts in ~5 seconds.
+# Lightweight dev stack - starts in ~5 seconds.
 # Use when developing pipeline or ML code locally.
 # Does NOT include MLflow, dashboard, or Airflow.
 #

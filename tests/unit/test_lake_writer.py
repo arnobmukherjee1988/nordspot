@@ -33,7 +33,7 @@ def test_write_creates_parquet(writer, sample_df):
 
 
 def test_write_is_idempotent(writer, sample_df):
-    """Writing twice should produce one file, not two — 24 rows, not 48."""
+    """Writing twice should produce one file, not two - 24 rows, not 48."""
     writer.write(sample_df, data_type="prices", zone="SE3", date=date(2026, 6, 25))
     writer.write(sample_df, data_type="prices", zone="SE3", date=date(2026, 6, 25))
     path = writer._build_path("prices", "SE3", date(2026, 6, 25))

@@ -18,7 +18,7 @@ import os
 
 import mlflow
 
-# ── Canonical experiment names ────────────────────────────────────────────────
+# -- Canonical experiment names ------------------------------------------------
 # Keyed by short model alias so training scripts reference EXPERIMENTS["lgbm"]
 # rather than hard-coding string literals that could drift across files.
 EXPERIMENTS: dict[str, str] = {
@@ -42,14 +42,14 @@ def create_experiments(
 ) -> dict[str, str]:
     """Create all NordSpot experiments if they do not already exist.
 
-    Idempotent — safe to run multiple times; existing experiments are left
+    Idempotent - safe to run multiple times; existing experiments are left
     untouched and their IDs are returned alongside any newly created ones.
 
     Args:
         tracking_uri: Override the tracking URI (defaults to get_tracking_uri()).
 
     Returns:
-        Mapping of model alias → MLflow experiment ID string.
+        Mapping of model alias -> MLflow experiment ID string.
     """
     uri = tracking_uri or get_tracking_uri()
     mlflow.set_tracking_uri(uri)
@@ -71,4 +71,4 @@ def create_experiments(
 if __name__ == "__main__":
     print(f"Connecting to MLflow at {get_tracking_uri()} ...")
     result = create_experiments()
-    print(f"\nDone — {len(result)} experiments ready.")
+    print(f"\nDone - {len(result)} experiments ready.")

@@ -5,9 +5,9 @@ Invalid requests (wrong zone, past date) are rejected with HTTP 422 before
 any model or database is touched.
 
 Schemas:
-    ForecastRequest  — POST /v1/forecast body
-    HourlyForecast   — one row of the 24-hour output (hour + point + interval)
-    ForecastResponse — full response envelope
+    ForecastRequest  - POST /v1/forecast body
+    HourlyForecast   - one row of the 24-hour output (hour + point + interval)
+    ForecastResponse - full response envelope
 """
 
 from __future__ import annotations
@@ -58,8 +58,8 @@ class HourlyForecast(BaseModel):
     Attributes:
         hour:  Delivery hour (0-23) in local time (Europe/Stockholm).
         point: Median (q50) forecast in EUR/MWh.
-        q05:   5th percentile — lower bound of the 90% prediction interval.
-        q95:   95th percentile — upper bound of the 90% prediction interval.
+        q05:   5th percentile - lower bound of the 90% prediction interval.
+        q95:   95th percentile - upper bound of the 90% prediction interval.
     """
 
     model_config = ConfigDict(

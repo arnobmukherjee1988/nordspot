@@ -1,7 +1,7 @@
 """Unit tests for ml/models/ensemble.py.
 
 Tests train() and predict() on synthetic base model predictions.
-The ensemble uses Ridge regression with no external infrastructure —
+The ensemble uses Ridge regression with no external infrastructure -
 tests run without any model files on disk (tmp_path isolates writes).
 """
 
@@ -13,7 +13,7 @@ import pytest
 
 import ml.models.ensemble as ens_mod
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
+# -- Fixtures ------------------------------------------------------------------
 
 
 @pytest.fixture()
@@ -47,7 +47,7 @@ def base_preds_and_actuals() -> tuple[pd.DataFrame, pd.Series]:
     return base_preds, actuals
 
 
-# ── Tests ─────────────────────────────────────────────────────────────────────
+# -- Tests ---------------------------------------------------------------------
 
 
 def test_train_returns_three_quantile_models(model_dir, base_preds_and_actuals):
@@ -74,7 +74,7 @@ def test_predict_length_matches_input(model_dir, base_preds_and_actuals):
 
 
 def test_quantile_ordering_preserved(model_dir, base_preds_and_actuals):
-    """predict() must ensure ens_q05 ≤ ens_q50 ≤ ens_q95 for every row."""
+    """predict() must ensure ens_q05 <= ens_q50 <= ens_q95 for every row."""
     base_preds, actuals = base_preds_and_actuals
     ens_mod.train(base_preds, actuals)
     preds = ens_mod.predict(base_preds)

@@ -11,7 +11,7 @@ from timedb import TimeDBClient
 
 load_dotenv()
 
-# ── ClickHouse DDL — zone-aware Silver tables ─────────────────────────────────
+# -- ClickHouse DDL - zone-aware Silver tables ---------------------------------
 # All tables: MergeTree, partitioned by month, ordered by (zone, valid_time).
 # CREATE TABLE IF NOT EXISTS makes every statement idempotent.
 
@@ -48,7 +48,7 @@ ZONE_TABLE_DDL: dict[str, str] = {
     """,
 }
 
-# ── Series ID registry ────────────────────────────────────────────────────────
+# -- Series ID registry --------------------------------------------------------
 # Add new series here as the project grows; never reuse an ID.
 
 SERIES = {
@@ -64,7 +64,7 @@ SERIES = {
     "generation_solar": 42,
     # ENTSO-E actual load (MW, hourly)
     "load_actual": 50,
-    # Cross-border physical flows (MW, hourly) — one ID per major zone pair
+    # Cross-border physical flows (MW, hourly) - one ID per major zone pair
     "crossborder_SE1_SE2": 60,
     "crossborder_SE2_SE3": 61,
     "crossborder_SE3_SE4": 62,
@@ -80,7 +80,7 @@ SERIES = {
 
 
 def init_schema(ch_url: str | None = None) -> TimeDBClient:
-    """Create TimeDB tables (idempotent — safe to call on every startup)."""
+    """Create TimeDB tables (idempotent - safe to call on every startup)."""
     td = TimeDBClient(ch_url=ch_url)
     td.create()
     return td

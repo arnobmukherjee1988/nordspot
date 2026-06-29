@@ -1,4 +1,4 @@
-"""Unit tests for api/loader.py — MLflow Registry model loading.
+"""Unit tests for api/loader.py - MLflow Registry model loading.
 
 All tests run without a real MLflow server.  MlflowClient, mlflow.pyfunc,
 and get_tracking_uri are fully mocked via unittest.mock.patch so no network
@@ -12,13 +12,13 @@ from unittest.mock import MagicMock, patch
 from api.loader import MODEL_NAME, load_production_models
 from api.model_store import ModelStore
 
-# ── Shared constants ──────────────────────────────────────────────────────────
+# -- Shared constants ----------------------------------------------------------
 
 _EPOCH_MS = 1_700_000_000_000  # 2023-11-14T22:13:20 UTC
 _ISO = "2023-11-14T22:13:20Z"
 _VERSION = "3"
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helpers -------------------------------------------------------------------
 
 
 def _mv(version: str = _VERSION, ts_ms: int = _EPOCH_MS) -> MagicMock:
@@ -41,7 +41,7 @@ def _client(prod_versions=None, raise_on_get: bool = False) -> MagicMock:
     return c
 
 
-# ── Error / empty paths ───────────────────────────────────────────────────────
+# -- Error / empty paths -------------------------------------------------------
 
 
 @patch("api.loader.get_tracking_uri", return_value="http://mock:5000")
@@ -93,7 +93,7 @@ def test_model_artefact_load_failure_returns_not_ready(
     assert not store.is_ready
 
 
-# ── Happy path ────────────────────────────────────────────────────────────────
+# -- Happy path ----------------------------------------------------------------
 
 
 @patch("api.loader.get_tracking_uri", return_value="http://mock:5000")
@@ -158,7 +158,7 @@ def test_tracking_uri_override_is_respected(mock_mlflow, mock_client_cls, _gtu):
     mock_client_cls.assert_called_once_with(tracking_uri=custom_uri)
 
 
-# ── ModelStore property ───────────────────────────────────────────────────────
+# -- ModelStore property -------------------------------------------------------
 
 
 def test_model_store_is_ready_false_by_default():

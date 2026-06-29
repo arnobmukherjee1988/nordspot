@@ -1,7 +1,7 @@
 project: nordspot
 provider: local
 
-# Local backend — swap to BigQuery + Redis in Epic 7 (GCP).
+# Local backend - swap to BigQuery + Redis in Epic 7 (GCP).
 # All paths are relative to this file (feast/ directory).
 
 registry:

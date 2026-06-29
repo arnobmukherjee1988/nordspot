@@ -16,7 +16,7 @@ import pytest
 import ml.models.xgboost as xgb_mod
 from ml.models.lgbm import FEATURE_COLS
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
+# -- Fixtures ------------------------------------------------------------------
 
 
 @pytest.fixture()
@@ -52,7 +52,7 @@ def train_df() -> pd.DataFrame:
     return df
 
 
-# ── Tests ─────────────────────────────────────────────────────────────────────
+# -- Tests ---------------------------------------------------------------------
 
 
 def test_train_returns_three_quantile_models(fast_xgb, model_dir, train_df):
@@ -102,7 +102,7 @@ def test_calibrate_returns_float_and_saves_bundle(fast_xgb, model_dir, train_df)
 
 def test_conformal_widens_interval(fast_xgb, model_dir, train_df):
     """After calibrate(), predict() with apply_conformal=True must widen intervals
-    by exactly ĉ vs apply_conformal=False when ĉ > 0."""
+    by exactly c_hat vs apply_conformal=False when c_hat > 0."""
     xgb_mod.train(train_df, verbose=False)
     raw = xgb_mod.predict(train_df, apply_conformal=False)
 

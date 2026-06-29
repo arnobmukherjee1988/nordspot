@@ -19,7 +19,7 @@ lint:      ## Lint and format check (does not auto-fix)
 train:     ## Run model training
 	python -m ml.train
 
-migrate:   ## Create ClickHouse schema (idempotent — safe to re-run)
+migrate:   ## Create ClickHouse schema (idempotent - safe to re-run)
 	PYTHONPATH=. python -m db.schema
 
 logs:      ## Tail logs from all running containers

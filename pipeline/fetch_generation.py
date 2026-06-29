@@ -59,7 +59,7 @@ def _solar_total(df: pd.DataFrame) -> pd.Series:
 
 
 def sync_generation(zone: ZoneConfig, start: datetime, end: datetime) -> int:
-    """Fetch generation → Bronze (wide Parquet) → ClickHouse (total / wind / solar)."""
+    """Fetch generation -> Bronze (wide Parquet) -> ClickHouse (total / wind / solar)."""
     df = fetch_generation(zone, start, end)
 
     # Bronze: one wide Parquet per day

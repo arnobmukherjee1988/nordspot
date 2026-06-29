@@ -5,9 +5,9 @@ source) before promotion to Silver.
 
 Expected schema
 ---------------
-    valid_time : datetime64[ns, UTC]   — no nulls
-    zone       : str                   — ENTSO-E EIC code, no nulls
-    <fuel_col> : float64               — each MW column must be ≥ 0
+    valid_time : datetime64[ns, UTC]   - no nulls
+    zone       : str                   - ENTSO-E EIC code, no nulls
+    <fuel_col> : float64               - each MW column must be >= 0
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""NordSpot Python SDK — thin client for the NordSpot forecast API.
+"""NordSpot Python SDK - thin client for the NordSpot forecast API.
 
 Usage
 -----
@@ -79,7 +79,7 @@ class NordSpotClient:
         self._session = requests.Session()
         self._session.headers.update({"X-API-Key": api_key})
 
-    # ── Public methods ────────────────────────────────────────────────────────
+    # -- Public methods --------------------------------------------------------
 
     def get_forecast(
         self,
@@ -138,7 +138,7 @@ class NordSpotClient:
         response = self._session.get(url, timeout=self._timeout)
         return self._parse(response)
 
-    # ── Internal helpers ──────────────────────────────────────────────────────
+    # -- Internal helpers ------------------------------------------------------
 
     @staticmethod
     def _parse(response: requests.Response) -> dict:

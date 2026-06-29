@@ -1,7 +1,7 @@
-"""Unit tests for Story 5.6 — API documentation / OpenAPI spec.
+"""Unit tests for Story 5.6 - API documentation / OpenAPI spec.
 
 All tests are read-only GET requests against the TestClient.
-No authentication, model store, or database setup is needed — the OpenAPI
+No authentication, model store, or database setup is needed - the OpenAPI
 spec and Swagger UI are served unconditionally.
 """
 
@@ -14,7 +14,7 @@ from api.main import app
 client = TestClient(app)
 
 
-# ── Swagger UI ────────────────────────────────────────────────────────────────
+# -- Swagger UI ----------------------------------------------------------------
 
 
 def test_docs_returns_200():
@@ -27,7 +27,7 @@ def test_docs_is_html():
     assert "text/html" in response.headers["content-type"]
 
 
-# ── OpenAPI JSON spec ─────────────────────────────────────────────────────────
+# -- OpenAPI JSON spec ---------------------------------------------------------
 
 
 def test_openapi_json_returns_200():

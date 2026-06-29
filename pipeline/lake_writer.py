@@ -49,7 +49,7 @@ class LakeWriter:
         return str(full_path)
 
     def _write_gcs(self, df: pd.DataFrame, path: str) -> str:
-        from google.cloud import storage  # lazy import — only needed in production
+        from google.cloud import storage  # lazy import - only needed in production
 
         client = storage.Client()
         bucket = client.bucket(self.bucket)

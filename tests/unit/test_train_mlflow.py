@@ -21,9 +21,9 @@ import pytest
 from ml.mlflow_setup import EXPERIMENTS
 from ml.train import train
 
-# ── Synthetic data helpers ────────────────────────────────────────────────────
+# -- Synthetic data helpers ----------------------------------------------------
 
-_N = 800  # rows — enough for _compute_metrics (needs > 720)
+_N = 800  # rows - enough for _compute_metrics (needs > 720)
 
 _START = datetime(2023, 1, 1, tzinfo=timezone.utc)
 _END = datetime(2024, 6, 1, tzinfo=timezone.utc)
@@ -113,7 +113,7 @@ def _fake_fi() -> pd.DataFrame:
     return pd.DataFrame({"mean": [1.0, 0.5]}, index=["price_lag24h", "hour"])
 
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
+# -- Fixtures ------------------------------------------------------------------
 
 
 @pytest.fixture()
@@ -126,31 +126,31 @@ def local_mlflow(tmp_path, monkeypatch):
     mlflow.set_tracking_uri("")
 
 
-# ── Helper: run train() with all external deps patched ────────────────────────
+# -- Helper: run train() with all external deps patched ------------------------
 
 
 def _run_train(note: str = "test run") -> None:
     """Call train() with infrastructure patched out.
 
     The only real code paths exercised are:
-      • mlflow.start_run / log_params / log_metrics / set_tags
-      • _compute_metrics (pure maths — no side effects)
-      • _append_log (writes MODEL_LOG.md, harmless in tests)
-      • _print_metrics_table (stdout only)
+      - mlflow.start_run / log_params / log_metrics / set_tags
+      - _compute_metrics (pure maths - no side effects)
+      - _append_log (writes MODEL_LOG.md, harmless in tests)
+      - _print_metrics_table (stdout only)
     """
     fake_df = _fake_df()
 
     # ExitStack avoids Python's "too many statically nested blocks" error
     # that triggers when a parenthesised `with` block exceeds ~20 context managers.
     _patches = [
-        # ── Core infrastructure ───────────────────────────────────
+        # -- Core infrastructure -----------------------------------
         patch("ml.train.init_schema", return_value=MagicMock()),
         patch("ml.train.build_features", return_value=fake_df),
         patch("ml.train._write_forecasts_to_timedb"),
         patch("ml.train._s3_upload_models"),
         patch("ml.train._log_feature_importance"),  # skip matplotlib in CI
         patch("ml.train.log_shap_artifacts"),  # skip SHAP compute in CI
-        # ── LGBM ─────────────────────────────────────────────────
+        # -- LGBM -------------------------------------------------
         patch(
             "ml.models.lgbm.train",
             return_value={
@@ -163,10 +163,10 @@ def _run_train(note: str = "test run") -> None:
         patch("ml.models.lgbm.calibrate", return_value=0.5),
         patch("ml.models.lgbm.feature_importance", return_value=_fake_fi()),
         patch("mlflow.lightgbm.log_model"),
-        # ── LEAR ─────────────────────────────────────────────────
+        # -- LEAR -------------------------------------------------
         patch("ml.models.lear.train"),
         patch("ml.models.lear.predict", side_effect=_fake_lear_preds),
-        # ── XGBoost (Story 4.3) ───────────────────────────────────
+        # -- XGBoost (Story 4.3) -----------------------------------
         patch(
             "ml.models.xgboost.train",
             return_value={
@@ -178,7 +178,7 @@ def _run_train(note: str = "test run") -> None:
         patch("ml.models.xgboost.predict", side_effect=_fake_xgb_preds),
         patch("ml.models.xgboost.calibrate", return_value=0.3),
         patch("mlflow.xgboost.log_model"),
-        # ── CatBoost (Story 4.4) ──────────────────────────────────
+        # -- CatBoost (Story 4.4) ----------------------------------
         patch(
             "ml.models.catboost.train",
             return_value={
@@ -190,7 +190,7 @@ def _run_train(note: str = "test run") -> None:
         patch("ml.models.catboost.predict", side_effect=_fake_cat_preds),
         patch("ml.models.catboost.calibrate", return_value=0.2),
         patch("mlflow.catboost.log_model"),
-        # ── Ensemble (Story 4.6) ──────────────────────────────────────────────
+        # -- Ensemble (Story 4.6) ----------------------------------------------
         patch(
             "ml.models.ensemble.train",
             return_value={
@@ -200,7 +200,7 @@ def _run_train(note: str = "test run") -> None:
             },
         ),
         patch("ml.models.ensemble.predict", side_effect=_fake_ens_preds),
-        # ── Registry (Story 4.7) ──────────────────────────────────────────────
+        # -- Registry (Story 4.7) ----------------------------------------------
         patch("ml.train.register_and_promote"),  # skip Model Registry in unit tests
         patch("mlflow.sklearn.log_model"),  # skip sklearn artifact serialisation
         patch("ml.train._append_log"),  # prevent writes to model/MODEL_LOG.md
@@ -212,7 +212,7 @@ def _run_train(note: str = "test run") -> None:
         train(start=_START, end=_END, note=note)
 
 
-# ── Tests ─────────────────────────────────────────────────────────────────────
+# -- Tests ---------------------------------------------------------------------
 
 
 def test_train_creates_mlflow_run(local_mlflow):
@@ -235,7 +235,7 @@ def test_train_run_in_correct_experiment(local_mlflow):
 
 
 def test_train_run_status_is_finished(local_mlflow):
-    """Run must complete cleanly — status FINISHED, not FAILED or RUNNING."""
+    """Run must complete cleanly - status FINISHED, not FAILED or RUNNING."""
     _run_train()
     client = mlflow.tracking.MlflowClient(tracking_uri=local_mlflow)
     exp = client.get_experiment_by_name(EXPERIMENTS["lgbm"])
@@ -300,7 +300,7 @@ def test_train_run_has_note_tag(local_mlflow):
 
 
 def test_train_run_has_zone_tag(local_mlflow):
-    """The zone tag must be set — used for filtering runs in the MLflow UI."""
+    """The zone tag must be set - used for filtering runs in the MLflow UI."""
     _run_train()
     client = mlflow.tracking.MlflowClient(tracking_uri=local_mlflow)
     exp = client.get_experiment_by_name(EXPERIMENTS["lgbm"])
@@ -309,7 +309,7 @@ def test_train_run_has_zone_tag(local_mlflow):
     assert tags["zone"] == "SE3"
 
 
-# ── XGBoost MLflow tests (Story 4.3) ─────────────────────────────────────────
+# -- XGBoost MLflow tests (Story 4.3) -----------------------------------------
 
 
 def test_xgboost_run_created(local_mlflow):
@@ -323,7 +323,7 @@ def test_xgboost_run_created(local_mlflow):
 
 
 def test_xgboost_run_status_finished(local_mlflow):
-    """XGBoost run must complete cleanly — status FINISHED."""
+    """XGBoost run must complete cleanly - status FINISHED."""
     _run_train()
     client = mlflow.tracking.MlflowClient(tracking_uri=local_mlflow)
     exp = client.get_experiment_by_name(EXPERIMENTS["xgboost"])
@@ -342,7 +342,7 @@ def test_xgboost_logs_metrics(local_mlflow):
         assert isinstance(metrics[key], float), f"{key} should be float"
 
 
-# ── CatBoost MLflow tests (Story 4.4) ────────────────────────────────────────
+# -- CatBoost MLflow tests (Story 4.4) ----------------------------------------
 
 
 def test_catboost_run_created(local_mlflow):
@@ -356,7 +356,7 @@ def test_catboost_run_created(local_mlflow):
 
 
 def test_catboost_run_status_finished(local_mlflow):
-    """CatBoost run must complete cleanly — status FINISHED."""
+    """CatBoost run must complete cleanly - status FINISHED."""
     _run_train()
     client = mlflow.tracking.MlflowClient(tracking_uri=local_mlflow)
     exp = client.get_experiment_by_name(EXPERIMENTS["catboost"])
@@ -375,7 +375,7 @@ def test_catboost_logs_metrics(local_mlflow):
         assert isinstance(metrics[key], float), f"{key} should be float"
 
 
-# ── Ensemble MLflow tests (Story 4.6) ────────────────────────────────────────
+# -- Ensemble MLflow tests (Story 4.6) ----------------------------------------
 
 
 def test_ensemble_run_created(local_mlflow):
@@ -389,7 +389,7 @@ def test_ensemble_run_created(local_mlflow):
 
 
 def test_ensemble_run_status_finished(local_mlflow):
-    """Ensemble run must complete cleanly — status FINISHED."""
+    """Ensemble run must complete cleanly - status FINISHED."""
     _run_train()
     client = mlflow.tracking.MlflowClient(tracking_uri=local_mlflow)
     exp = client.get_experiment_by_name(EXPERIMENTS["ensemble"])

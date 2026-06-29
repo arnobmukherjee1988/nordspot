@@ -1,4 +1,4 @@
-"""Unit tests for fetch_weather — mocks Open-Meteo, no real network calls."""
+"""Unit tests for fetch_weather - mocks Open-Meteo, no real network calls."""
 
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch

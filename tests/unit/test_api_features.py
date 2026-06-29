@@ -1,4 +1,4 @@
-"""Unit tests for api/features.py — inference feature retrieval.
+"""Unit tests for api/features.py - inference feature retrieval.
 
 All tests run without a real database.  build_features() and load_zone()
 are patched at their source modules so no TimeDB or ClickHouse connections
@@ -17,13 +17,13 @@ import pytest
 
 from api.features import get_inference_features
 
-# ── Constants ─────────────────────────────────────────────────────────────────
+# -- Constants -----------------------------------------------------------------
 
 _ZONE_NAME = "SE3"
 _ZONE_EIC = "10Y1001A1001A46L"
 _TARGET_DATE = datetime.date(2026, 7, 1)
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helpers -------------------------------------------------------------------
 
 
 def _make_df(n_days: int = 3, zone_eic: str = _ZONE_EIC) -> pd.DataFrame:
@@ -32,7 +32,7 @@ def _make_df(n_days: int = 3, zone_eic: str = _ZONE_EIC) -> pd.DataFrame:
     n_days=3 starting 2026-06-29 covers:
         day 0: 2026-06-29 (24 rows)
         day 1: 2026-06-30 (24 rows)
-        day 2: 2026-07-01 (24 rows) ← _TARGET_DATE
+        day 2: 2026-07-01 (24 rows) <- _TARGET_DATE
     """
     start = pd.Timestamp("2026-06-29T00:00:00Z")
     idx = pd.date_range(start, periods=n_days * 24, freq="h", tz="UTC")
@@ -77,7 +77,7 @@ def _make_df_partial_date(zone_eic: str = _ZONE_EIC) -> pd.DataFrame:
     return df.drop(index=drop_idx).reset_index(drop=True)
 
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
+# -- Fixtures ------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -88,7 +88,7 @@ def mock_zone():
     return zone
 
 
-# ── Happy path ────────────────────────────────────────────────────────────────
+# -- Happy path ----------------------------------------------------------------
 
 
 @patch("pipeline.features.build_features")
@@ -169,7 +169,7 @@ def test_result_index_is_reset(mock_load_zone, mock_build, mock_zone):
     assert list(result.index) == list(range(24))
 
 
-# ── Error paths ───────────────────────────────────────────────────────────────
+# -- Error paths ---------------------------------------------------------------
 
 
 @patch("pipeline.features.build_features")

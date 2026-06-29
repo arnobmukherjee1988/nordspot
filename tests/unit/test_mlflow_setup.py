@@ -1,6 +1,6 @@
 """Unit tests for ml/mlflow_setup.py.
 
-All tests use mlflow's in-memory SQLite tracking store via a tmp_path fixture —
+All tests use mlflow's in-memory SQLite tracking store via a tmp_path fixture -
 no MLflow server required.
 """
 
@@ -11,7 +11,7 @@ import pytest
 
 from ml.mlflow_setup import EXPERIMENTS, create_experiments, get_tracking_uri
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
+# -- Fixtures ------------------------------------------------------------------
 
 
 @pytest.fixture()
@@ -25,7 +25,7 @@ def local_mlflow(tmp_path, monkeypatch):
     mlflow.set_tracking_uri("")
 
 
-# ── EXPERIMENTS constant ──────────────────────────────────────────────────────
+# -- EXPERIMENTS constant ------------------------------------------------------
 
 
 def test_experiments_has_five_keys():
@@ -47,7 +47,7 @@ def test_experiment_names_are_unique():
     assert len(names) == len(set(names)), "Duplicate experiment names detected"
 
 
-# ── get_tracking_uri ──────────────────────────────────────────────────────────
+# -- get_tracking_uri ----------------------------------------------------------
 
 
 def test_get_tracking_uri_reads_env(monkeypatch):
@@ -60,7 +60,7 @@ def test_get_tracking_uri_defaults_to_localhost(monkeypatch):
     assert get_tracking_uri() == "http://localhost:5000"
 
 
-# ── create_experiments ────────────────────────────────────────────────────────
+# -- create_experiments --------------------------------------------------------
 
 
 def test_create_experiments_returns_all_aliases(local_mlflow):

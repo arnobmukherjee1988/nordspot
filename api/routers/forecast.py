@@ -1,12 +1,12 @@
-"""POST /v1/forecast — 24-hour ahead probabilistic price forecast.
+"""POST /v1/forecast - 24-hour ahead probabilistic price forecast.
 
 Story 5.5: API key authentication added via Depends(verify_api_key).
 
 Request flow:
-    0. verify_api_key()             → HTTP 401 if X-API-Key missing / invalid
-    1. Check store.is_ready         → HTTP 503 if no Production model loaded
-    2. get_inference_features()     → 24-row feature DataFrame (Story 5.3)
-    3. run_inference()              → ens_q05, ens_q50, ens_q95 (Story 5.4)
+    0. verify_api_key()             -> HTTP 401 if X-API-Key missing / invalid
+    1. Check store.is_ready         -> HTTP 503 if no Production model loaded
+    2. get_inference_features()     -> 24-row feature DataFrame (Story 5.3)
+    3. run_inference()              -> ens_q05, ens_q50, ens_q95 (Story 5.4)
     4. Assemble ForecastResponse with 24 HourlyForecast objects
 """
 
@@ -33,7 +33,7 @@ router = APIRouter()
         "requested Swedish bidding zone and delivery date. "
         "Each hour includes a point forecast (q50) and a 90% prediction interval "
         "[q05, q95]. "
-        "**Authentication required** — include your `X-API-Key` header."
+        "**Authentication required** - include your `X-API-Key` header."
     ),
     tags=["Forecast"],
     dependencies=[Depends(verify_api_key)],
@@ -57,13 +57,13 @@ async def forecast(body: ForecastRequest, request: Request) -> ForecastResponse:
             ),
         )
 
-    # ── Feature retrieval ─────────────────────────────────────────────────
+    # -- Feature retrieval -------------------------------------------------
     features_df = get_inference_features(body.zone, body.date)
 
-    # ── Inference ─────────────────────────────────────────────────────────
+    # -- Inference ---------------------------------------------------------
     preds = run_inference(features_df)
 
-    # ── Assemble response ─────────────────────────────────────────────────
+    # -- Assemble response -------------------------------------------------
     hourly = [
         HourlyForecast(
             hour=h,

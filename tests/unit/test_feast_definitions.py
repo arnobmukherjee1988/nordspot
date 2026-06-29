@@ -1,7 +1,7 @@
 """Unit tests for Feast entity and feature view definitions.
 
-Tests validate the Python object definitions — names, schema fields, TTL,
-entity join keys, shared source — WITHOUT requiring ``feast apply`` or any
+Tests validate the Python object definitions - names, schema fields, TTL,
+entity join keys, shared source - WITHOUT requiring ``feast apply`` or any
 running infrastructure (no registry, no ClickHouse, no Parquet files).
 
 Strategy: load feast/feature_repo.py via importlib so we avoid putting
@@ -15,7 +15,6 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
-
 from feast import Entity, FeatureService, FeatureView
 from feast.types import Float64, Int64
 
@@ -36,7 +35,7 @@ def repo():
     return _load_module("feature_repo")
 
 
-# ── Entity ──────────────────────────────────────────────────────────────────────
+# -- Entity ----------------------------------------------------------------------
 
 
 def test_zone_entity_type(repo):
@@ -52,7 +51,7 @@ def test_zone_entity_name(repo):
     assert repo.zone.name == "zone"
 
 
-# ── Shared source ───────────────────────────────────────────────────────────────
+# -- Shared source ---------------------------------------------------------------
 
 
 def test_source_timestamp_field(repo):
@@ -73,7 +72,7 @@ def test_all_views_share_same_source(repo):
     assert len(sources) == 1, f"Expected 1 unique source, got: {sources}"
 
 
-# ── Price features ──────────────────────────────────────────────────────────────
+# -- Price features --------------------------------------------------------------
 
 
 def test_price_features_is_feature_view(repo):
@@ -112,7 +111,7 @@ def test_price_features_all_float64(repo):
         ), f"{field.name} should be Float64, got {field.dtype}"
 
 
-# ── Calendar features ───────────────────────────────────────────────────────────
+# -- Calendar features -----------------------------------------------------------
 
 
 def test_calendar_features_is_feature_view(repo):
@@ -151,7 +150,7 @@ def test_calendar_has_interaction_cols(repo):
     assert "weekend_x_hour" in names
 
 
-# ── Grid / weather features ─────────────────────────────────────────────────────
+# -- Grid / weather features -----------------------------------------------------
 
 
 def test_grid_weather_is_feature_view(repo):
@@ -185,7 +184,7 @@ def test_grid_weather_all_float64(repo):
         assert field.dtype == Float64, f"{field.name} should be Float64"
 
 
-# ── Feature service ─────────────────────────────────────────────────────────────
+# -- Feature service -------------------------------------------------------------
 
 
 def test_forecast_service_is_feature_service(repo):

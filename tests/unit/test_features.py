@@ -2,7 +2,7 @@
 
 Strategy:
 - Pure transformation helpers (_build_price_lags, _build_calendar, etc.) are
-  tested directly with synthetic pandas objects — no DB required.
+  tested directly with synthetic pandas objects - no DB required.
 - build_features() is tested with mocked TD and ClickHouse clients injected
   via the td= and ch_client= parameters.
 """
@@ -27,7 +27,7 @@ from pipeline.features import (
     build_features,
 )
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
+# -- Fixtures ------------------------------------------------------------------
 
 N_HOURS = 400  # enough to cover 168h+ lags without all-NaN tail
 
@@ -48,7 +48,7 @@ def price(idx):
     return pd.Series(rng.uniform(20, 200, N_HOURS), index=idx, name="price")
 
 
-# ── Price lags ────────────────────────────────────────────────────────────────
+# -- Price lags ----------------------------------------------------------------
 
 
 def test_price_lags_returns_seven_series(price):
@@ -73,13 +73,13 @@ def test_price_lag_168h_equals_shift(price):
 
 
 def test_price_lags_are_non_negative_shift(price):
-    """Lags must shift into the past — no negative (future) shifts."""
+    """Lags must shift into the past - no negative (future) shifts."""
     for s in _build_price_lags(price):
         hours = int(s.name.replace("price_lag", "").replace("h", ""))
         assert hours > 0, f"Negative lag detected: {s.name}"
 
 
-# ── Rolling stats ─────────────────────────────────────────────────────────────
+# -- Rolling stats -------------------------------------------------------------
 
 
 def test_rolling_stats_returns_four_series(price):
@@ -96,7 +96,7 @@ def test_rolling_mean_24h_is_shifted(price):
     )
 
 
-# ── Calendar ──────────────────────────────────────────────────────────────────
+# -- Calendar ------------------------------------------------------------------
 
 
 def test_calendar_hour_range(idx):
@@ -136,7 +136,7 @@ def test_calendar_hour_x_month_interaction(idx):
     pd.testing.assert_series_equal(cal["hour_x_month"], expected, check_names=False)
 
 
-# ── Weather interactions ──────────────────────────────────────────────────────
+# -- Weather interactions ------------------------------------------------------
 
 
 def test_weather_interactions_count(idx):
@@ -155,7 +155,7 @@ def test_temp_x_wind_values(idx):
     assert (feats["temp_x_wind"] == 15.0).all()
 
 
-# ── ClickHouse reader helpers (mocked) ────────────────────────────────────────
+# -- ClickHouse reader helpers (mocked) ----------------------------------------
 
 
 def _mock_ch(sql_to_df: dict[str, pd.DataFrame]) -> MagicMock:
@@ -205,7 +205,7 @@ def test_read_load_returns_load_mw():
     assert "load_mw" in df.columns
 
 
-# ── build_features integration (mocked DB) ───────────────────────────────────
+# -- build_features integration (mocked DB) -----------------------------------
 
 
 def _make_td_mock(idx):

@@ -4,9 +4,9 @@ register_and_promote() is tested against a mocked MlflowClient so no real
 tracking server, artifact store, or model file is required.
 
 Four scenarios are covered:
-  1. No Production version exists          → unconditional promotion
-  2. New MAE < Production MAE              → promotion, old version archived
-  3. New MAE ≥ Production MAE              → Staging (challenger)
+  1. No Production version exists          -> unconditional promotion
+  2. New MAE < Production MAE              -> promotion, old version archived
+  3. New MAE >= Production MAE              -> Staging (challenger)
   4. Version is tagged with the correct MAE value
 """
 
@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, call, patch
 
 from ml.registry import register_and_promote
 
-# ── Helper ────────────────────────────────────────────────────────────────────
+# -- Helper --------------------------------------------------------------------
 
 
 def _make_client(prod_mae: float | None = None) -> MagicMock:
@@ -28,14 +28,14 @@ def _make_client(prod_mae: float | None = None) -> MagicMock:
     """
     client = MagicMock()
 
-    # create_model_version → version "2" in READY state
+    # create_model_version -> version "2" in READY state
     new_mv = MagicMock()
     new_mv.version = "2"
     new_mv.status = "READY"
     client.create_model_version.return_value = new_mv
     client.get_model_version.return_value = new_mv  # for READY polling
 
-    # get_latest_versions("Production") → empty or one prod version
+    # get_latest_versions("Production") -> empty or one prod version
     if prod_mae is None:
         client.get_latest_versions.return_value = []
     else:
@@ -47,11 +47,11 @@ def _make_client(prod_mae: float | None = None) -> MagicMock:
     return client
 
 
-# ── Tests ─────────────────────────────────────────────────────────────────────
+# -- Tests ---------------------------------------------------------------------
 
 
 def test_promotes_when_no_production_exists():
-    """First run: no Production version → unconditional promotion."""
+    """First run: no Production version -> unconditional promotion."""
     client = _make_client(prod_mae=None)
     with patch("ml.registry.MlflowClient", return_value=client):
         result = register_and_promote(run_id="abc123", mae=12.0)
@@ -64,7 +64,7 @@ def test_promotes_when_no_production_exists():
 
 
 def test_promotes_when_new_mae_is_better():
-    """New MAE (12.0) < Production MAE (15.0) → promote new, archive old."""
+    """New MAE (12.0) < Production MAE (15.0) -> promote new, archive old."""
     client = _make_client(prod_mae=15.0)
     with patch("ml.registry.MlflowClient", return_value=client):
         result = register_and_promote(run_id="abc123", mae=12.0)
@@ -82,7 +82,7 @@ def test_promotes_when_new_mae_is_better():
 
 
 def test_stays_challenger_when_new_mae_is_worse():
-    """New MAE (18.0) ≥ Production MAE (15.0) → Staging (challenger)."""
+    """New MAE (18.0) >= Production MAE (15.0) -> Staging (challenger)."""
     client = _make_client(prod_mae=15.0)
     with patch("ml.registry.MlflowClient", return_value=client):
         result = register_and_promote(run_id="abc123", mae=18.0)

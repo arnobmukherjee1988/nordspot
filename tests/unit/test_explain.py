@@ -3,7 +3,7 @@
 Verifies SHAP value properties (shape, additivity) and that
 log_shap_artifacts calls mlflow.log_figure with the expected artifact names.
 
-Uses a tiny LightGBM model (10 trees, 10 features) — fast to train, and
+Uses a tiny LightGBM model (10 trees, 10 features) - fast to train, and
 sufficient to exercise the full TreeExplainer code path.
 """
 
@@ -30,7 +30,7 @@ _FEAT_SUBSET = FEATURE_COLS[:10]
 _N = 100
 
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
+# -- Fixtures ------------------------------------------------------------------
 
 
 @pytest.fixture()
@@ -46,7 +46,7 @@ def tiny_model_and_x() -> tuple[lgb.LGBMRegressor, pd.DataFrame]:
     return model, x
 
 
-# ── Tests ─────────────────────────────────────────────────────────────────────
+# -- Tests ---------------------------------------------------------------------
 
 
 def test_compute_shap_shape(tiny_model_and_x):

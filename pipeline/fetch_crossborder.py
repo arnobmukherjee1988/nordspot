@@ -5,8 +5,8 @@ Writes Parquet to Bronze. ClickHouse Silver writes are deferred to
 Story 1.6 when the per-pair series IDs are confirmed.
 
 Default zone pairs (Sweden internal + key neighbours):
-    SE1 → SE2,  SE2 → SE3,  SE3 → SE4
-    SE3 → DK2,  SE3 → DE_LU,  SE3 → FI
+    SE1 -> SE2,  SE2 -> SE3,  SE3 -> SE4
+    SE3 -> DK2,  SE3 -> DE_LU,  SE3 -> FI
 
 Usage:
     python -m pipeline.fetch_crossborder --from SE3 --to SE4
@@ -41,7 +41,7 @@ def fetch_crossborder(
     start: datetime,
     end: datetime,
 ) -> pd.DataFrame:
-    """Fetch hourly net physical flow from_zone → to_zone.
+    """Fetch hourly net physical flow from_zone -> to_zone.
 
     Returns DataFrame with columns [valid_time, value, from_zone, to_zone].
     Positive values = net export from from_zone into to_zone.
@@ -70,7 +70,7 @@ def sync_crossborder(
     start: datetime,
     end: datetime,
 ) -> int:
-    """Fetch cross-border flow → Bronze Parquet. Returns row count."""
+    """Fetch cross-border flow -> Bronze Parquet. Returns row count."""
     df = fetch_crossborder(from_zone_id, to_zone_id, start, end)
 
     writer = LakeWriter()
@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
     for from_id, to_id in pairs:
         print(
-            f"Fetching crossborder: {from_id}→{to_id} "
+            f"Fetching crossborder: {from_id}->{to_id} "
             f"{start_dt.date()} -> {end_dt.date()} ..."
         )
         n = sync_crossborder(from_id, to_id, start_dt, end_dt)

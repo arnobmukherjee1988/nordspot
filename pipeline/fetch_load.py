@@ -44,7 +44,7 @@ def fetch_load(zone: ZoneConfig, start: datetime, end: datetime) -> pd.DataFrame
 
 
 def sync_load(zone: ZoneConfig, start: datetime, end: datetime) -> int:
-    """Fetch load → Bronze Parquet → ClickHouse."""
+    """Fetch load -> Bronze Parquet -> ClickHouse."""
     df = fetch_load(zone, start, end)
 
     # Bronze: one Parquet per day

@@ -21,5 +21,5 @@ models:
     silver:
       +materialized: table
       +engine: MergeTree()
-      # order_by is set per-model via {{ config() }} blocks — crossborder uses
+      # order_by is set per-model via {{ config() }} blocks - crossborder uses
       # (from_zone, to_zone, valid_time) while generation and load use (zone, valid_time)

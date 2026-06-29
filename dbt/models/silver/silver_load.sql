@@ -2,7 +2,7 @@
 
 /*
     silver_load
-    ───────────
+    -----------
     Cleans and validates the raw load_actual Silver table.
 
     Transforms applied:

@@ -1,8 +1,8 @@
 """Tests for zone-parameterised training (Story 4.8).
 
 Two scenarios:
-  1. train(zone='SE1') — the 'zone' MLflow tag on the lgbm run equals 'SE1'
-  2. train_all_zones() — train() is called exactly once per Swedish zone (SE1–SE4)
+  1. train(zone='SE1') - the 'zone' MLflow tag on the lgbm run equals 'SE1'
+  2. train_all_zones() - train() is called exactly once per Swedish zone (SE1-SE4)
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ _START = datetime(2023, 1, 1, tzinfo=timezone.utc)
 _END = datetime(2024, 6, 1, tzinfo=timezone.utc)
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helpers -------------------------------------------------------------------
 
 
 def _make_fake_df() -> pd.DataFrame:
@@ -34,7 +34,7 @@ def _make_fake_df() -> pd.DataFrame:
         {
             "valid_time": idx,
             "price": rng.uniform(20, 200, _N),
-            "zone": "10Y1001A1001A44P",  # SE1 EIC — arbitrary for test purposes
+            "zone": "10Y1001A1001A44P",  # SE1 EIC - arbitrary for test purposes
         },
         index=idx,
     )
@@ -50,7 +50,7 @@ def _run_train_for_zone(fake_df: pd.DataFrame, zone: str) -> None:
     """Call train() with all external dependencies patched, for a given zone."""
     idx = fake_df.index
     _patches = [
-        # ── Core infrastructure ───────────────────────────────────
+        # -- Core infrastructure -----------------------------------
         patch("ml.train.init_schema", return_value=MagicMock()),
         patch("ml.train.build_features", return_value=fake_df),
         patch("ml.train._write_forecasts_to_timedb"),
@@ -60,7 +60,7 @@ def _run_train_for_zone(fake_df: pd.DataFrame, zone: str) -> None:
         patch("ml.train.register_and_promote"),
         patch("mlflow.sklearn.log_model"),
         patch("ml.train._append_log"),  # prevent writes to model/MODEL_LOG.md
-        # ── LGBM ─────────────────────────────────────────────────
+        # -- LGBM -------------------------------------------------
         patch(
             "ml.models.lgbm.train",
             return_value={
@@ -78,13 +78,13 @@ def _run_train_for_zone(fake_df: pd.DataFrame, zone: str) -> None:
             return_value=pd.DataFrame({"mean": [1.0]}, index=["price_lag24h"]),
         ),
         patch("mlflow.lightgbm.log_model"),
-        # ── LEAR ─────────────────────────────────────────────────
+        # -- LEAR -------------------------------------------------
         patch("ml.models.lear.train"),
         patch(
             "ml.models.lear.predict",
             return_value=_preds(["lear_q05", "lear_q50", "lear_q95"], idx),
         ),
-        # ── XGBoost ──────────────────────────────────────────────
+        # -- XGBoost ----------------------------------------------
         patch(
             "ml.models.xgboost.train",
             return_value={q: MagicMock() for q in ("q05", "q50", "q95")},
@@ -95,7 +95,7 @@ def _run_train_for_zone(fake_df: pd.DataFrame, zone: str) -> None:
         ),
         patch("ml.models.xgboost.calibrate", return_value=0.3),
         patch("mlflow.xgboost.log_model"),
-        # ── CatBoost ─────────────────────────────────────────────
+        # -- CatBoost ---------------------------------------------
         patch(
             "ml.models.catboost.train",
             return_value={q: MagicMock() for q in ("q05", "q50", "q95")},
@@ -106,7 +106,7 @@ def _run_train_for_zone(fake_df: pd.DataFrame, zone: str) -> None:
         ),
         patch("ml.models.catboost.calibrate", return_value=0.2),
         patch("mlflow.catboost.log_model"),
-        # ── Ensemble ─────────────────────────────────────────────
+        # -- Ensemble ---------------------------------------------
         patch(
             "ml.models.ensemble.train",
             return_value={
@@ -126,7 +126,7 @@ def _run_train_for_zone(fake_df: pd.DataFrame, zone: str) -> None:
         train(start=_START, end=_END, zone=zone, note="zone test")
 
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
+# -- Fixtures ------------------------------------------------------------------
 
 
 @pytest.fixture()
@@ -139,7 +139,7 @@ def local_mlflow(tmp_path, monkeypatch):
     mlflow.set_tracking_uri("")
 
 
-# ── Tests ─────────────────────────────────────────────────────────────────────
+# -- Tests ---------------------------------------------------------------------
 
 
 def test_zone_tag_propagates_to_lgbm_run(local_mlflow):
@@ -157,7 +157,7 @@ def test_zone_tag_propagates_to_lgbm_run(local_mlflow):
 
 
 def test_train_all_zones_trains_each_zone():
-    """train_all_zones() must call train() exactly once per Swedish zone (SE1–SE4)."""
+    """train_all_zones() must call train() exactly once per Swedish zone (SE1-SE4)."""
     with patch("ml.train.train") as mock_train:
         train_all_zones(start=_START, end=_END, note="all zones test")
 

@@ -6,7 +6,7 @@ so there is no training-serving skew.
 
 Design constraint (see PLATFORM_PLAN.md Epic 5 / pipeline/features.py):
     Weather must come from the Open-Meteo *forecast* archive at training
-    time and from the live forecast API at inference time — same signal
+    time and from the live forecast API at inference time - same signal
     type, different endpoint.  build_features() handles this via the
     TimeDB and ClickHouse clients passed in.
 
@@ -24,7 +24,7 @@ import pandas as pd
 logger = logging.getLogger("nordspot.api.features")
 
 # History window:  longest lag = 336h, longest rolling window = 720h
-# shifted 24h → effective lookback = 744h.  Add 6h margin → 750h.
+# shifted 24h -> effective lookback = 744h.  Add 6h margin -> 750h.
 _HISTORY_HOURS = 750
 
 
@@ -42,20 +42,20 @@ def get_inference_features(
     Parameters
     ----------
     zone_name:
-        Short zone ID accepted by ``load_zone()`` — e.g. ``"SE3"``.
+        Short zone ID accepted by ``load_zone()`` - e.g. ``"SE3"``.
     date:
         Delivery date in UTC (typically tomorrow's date at forecast request
         time).
     td:
-        TimeDB client.  ``None`` → auto-created from environment variables.
+        TimeDB client.  ``None`` -> auto-created from environment variables.
     ch_client:
-        ClickHouse client.  ``None`` → auto-created from environment
+        ClickHouse client.  ``None`` -> auto-created from environment
         variables.
 
     Returns
     -------
     pd.DataFrame
-        24 rows — one per delivery hour 00–23 UTC — sorted ascending by
+        24 rows - one per delivery hour 00-23 UTC - sorted ascending by
         ``valid_time``.  Columns are identical to the training feature
         matrix produced by ``pipeline.features.build_features()``.
 
@@ -80,7 +80,7 @@ def get_inference_features(
     history_start = target_start - datetime.timedelta(hours=_HISTORY_HOURS)
 
     logger.info(
-        "Fetching features for %s on %s  (history window %s → %s)",
+        "Fetching features for %s on %s  (history window %s -> %s)",
         zone_name,
         date,
         history_start.date(),
@@ -106,7 +106,7 @@ def get_inference_features(
         )
 
     logger.info(
-        "Feature matrix ready for %s on %s: %d rows × %d columns",
+        "Feature matrix ready for %s on %s: %d rows x %d columns",
         zone_name,
         date,
         *rows.shape,

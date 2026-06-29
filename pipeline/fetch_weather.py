@@ -1,12 +1,12 @@
 """
 Fetch weather features from Open-Meteo for a bidding zone.
 
-No API key required — Open-Meteo is free and open.
+No API key required - Open-Meteo is free and open.
 
 Variables fetched (hourly):
-    temperature_2m      (°C)
+    temperature_2m      (degC)
     wind_speed_10m      (m/s)
-    shortwave_radiation (W/m²)
+    shortwave_radiation (W/m^2)
 
 Usage:
     python -m pipeline.fetch_weather --zone SE3
@@ -79,7 +79,7 @@ def fetch_weather(
 
 
 def sync_weather(zone: ZoneConfig, start: datetime, end: datetime) -> dict[str, int]:
-    """Fetch weather → write to Bronze → write to ClickHouse."""
+    """Fetch weather -> write to Bronze -> write to ClickHouse."""
     dfs = fetch_weather(zone, start, end)
 
     # Bronze layer: one wide Parquet per day (all variables as columns)

@@ -3,7 +3,7 @@
 Wraps Feast's get_historical_features (training) and get_online_features
 (serving) behind a stable interface so callers never import feast directly.
 
-Usage — training (Epic 4):
+Usage - training (Epic 4):
     from feast.feature_retrieval import get_training_features
 
     entity_df = pd.DataFrame({
@@ -13,7 +13,7 @@ Usage — training (Epic 4):
     })
     features_df = get_training_features(entity_df)
 
-Usage — serving (Epic 5):
+Usage - serving (Epic 5):
     from feast.feature_retrieval import get_online_features
 
     row = get_online_features(zones=["10Y1001A1001A46L"])
@@ -24,7 +24,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pandas as pd
-
 from feast import FeatureStore
 
 _REPO_PATH = Path(__file__).resolve().parent  # feast/ directory
@@ -42,7 +41,7 @@ def get_training_features(
     """Retrieve point-in-time correct historical features for training.
 
     Feast joins features to each (zone, valid_time) row using only data that
-    was available at that timestamp — no temporal leakage.
+    was available at that timestamp - no temporal leakage.
 
     Parameters
     ----------
@@ -56,7 +55,7 @@ def get_training_features(
     Returns
     -------
     pd.DataFrame
-        entity_df left-joined with all feature columns — ready for model.fit().
+        entity_df left-joined with all feature columns - ready for model.fit().
     """
     store = _store()
     job = store.get_historical_features(
@@ -73,7 +72,7 @@ def get_online_features(
     """Retrieve the latest materialised feature values for a list of zones.
 
     Called at serving time by the FastAPI app (Epic 5). Reads from the SQLite
-    online store (local) or Redis (production — Epic 7).
+    online store (local) or Redis (production - Epic 7).
 
     Parameters
     ----------

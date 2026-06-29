@@ -1,30 +1,30 @@
-# SE3 Electricity Price Forecast — Model Log
+# SE3 Electricity Price Forecast - Model Log
 
 All training runs are appended automatically by `ml/train.py`.
 Use `--note` to document what changed.  KPIs evaluated on a 90-day holdout.
 
 Metrics key:
-- **MAE** — Mean Absolute Error (EUR/MWh). Primary point-forecast metric.
-- **RMSE** — Root Mean Squared Error (EUR/MWh). Penalises large errors more.
-- **Coverage** — Fraction of actuals inside [q05, q95]. Target: ~90%.
-- **Spike MAE** — MAE conditioned on actual price > 100 EUR/MWh.
-- **Night MAE** — MAE for hours 00–05 and 23.
-- **Peak MAE** — MAE for hours 08–09 and 17–20.
+- **MAE** - Mean Absolute Error (EUR/MWh). Primary point-forecast metric.
+- **RMSE** - Root Mean Squared Error (EUR/MWh). Penalises large errors more.
+- **Coverage** - Fraction of actuals inside [q05, q95]. Target: ~90%.
+- **Spike MAE** - MAE conditioned on actual price > 100 EUR/MWh.
+- **Night MAE** - MAE for hours 00-05 and 23.
+- **Peak MAE** - MAE for hours 08-09 and 17-20.
 
 ---
 
-## Baseline — 2026-05-13 (before v2 improvements)
+## Baseline - 2026-05-13 (before v2 improvements)
 
-**Train:** 2020-01-01 → 2026-02-12  (23,943 labelled rows — data truncated by
+**Train:** 2020-01-01 -> 2026-02-12  (23,943 labelled rows - data truncated by
 `retention="medium"` TTL; only 3 years readable)
-**Holdout:** 2026-02-12 → 2026-05-13
+**Holdout:** 2026-02-12 -> 2026-05-13
 
-**State:** Baseline v2 — LightGBM (3 independent quantile models) + LEAR (fixed alpha=0.001, full in-sample residuals). Features: 3 price lags (24h/48h/168h), 2 rolling stats, standard calendar, 3 weather vars, 1 weather interaction.
+**State:** Baseline v2 - LightGBM (3 independent quantile models) + LEAR (fixed alpha=0.001, full in-sample residuals). Features: 3 price lags (24h/48h/168h), 2 rolling stats, standard calendar, 3 weather vars, 1 weather interaction.
 
 | Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
 |---|---|---|---|---|---|---|
-| LGBM | 22.13 | 28.98 | 63.5% | — | — | — |
-| LEAR | 21.33 | 27.85 | 82.6% | — | — | — |
+| LGBM | 22.13 | 28.98 | 63.5% | - | - | - |
+| LEAR | 21.33 | 27.85 | 82.6% | - | - | - |
 
 **Observations:**
 - Coverage far below 90% target for LightGBM (overconfident intervals).
@@ -33,7 +33,7 @@ Metrics key:
 
 ---
 
-## Fix — 2026-05-13: retention="forever" for all historical data
+## Fix - 2026-05-13: retention="forever" for all historical data
 
 **Change:** Re-fetched all prices and weather with `retention="forever"`.
 ClickHouse TTL for `medium` tier is 1095 days (3 years from `valid_time`),
@@ -43,31 +43,31 @@ causing deletion of all data before 2023-05-15.
 
 | Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
 |---|---|---|---|---|---|---|
-| LGBM | 21.50 | 28.11 | 71.3% | — | — | — |
-| LEAR | 22.45 | 29.50 | 91.7% | — | — | — |
+| LGBM | 21.50 | 28.11 | 71.3% | - | - | - |
+| LEAR | 22.45 | 29.50 | 91.7% | - | - | - |
 
 **Observations:**
 - 100% labelled rows now (53,463 samples vs 23,943 before).
-- LightGBM coverage improved 63.5% → 71.3% but still well below target.
-- LEAR coverage 91.7% — nearly perfectly calibrated.
-- MAE barely changed despite doubling training data: Feb–May 2026 is a
+- LightGBM coverage improved 63.5% -> 71.3% but still well below target.
+- LEAR coverage 91.7% - nearly perfectly calibrated.
+- MAE barely changed despite doubling training data: Feb-May 2026 is a
   structurally volatile period (high renewables, frequent near-zero prices).
 
 ---
 
-## v2 Model Improvements — Applied 2026-05-13
+## v2 Model Improvements - Applied 2026-05-13
 
 ### Changes to LightGBM (`ml/models/lgbm.py`)
 
 | Parameter | Before | After | Rationale |
 |---|---|---|---|
 | `num_leaves` | 63 | 127 | More expressive trees; offset by stronger regularisation below |
-| `min_child_samples` | 20 | 50 | Primary anti-overfitting guard — each leaf needs ≥50 samples |
-| `colsample_bytree` | 0.8 | 0.6 | Stronger feature-level bagging → more diverse ensemble |
+| `min_child_samples` | 20 | 50 | Primary anti-overfitting guard - each leaf needs >=50 samples |
+| `colsample_bytree` | 0.8 | 0.6 | Stronger feature-level bagging -> more diverse ensemble |
 | `subsample` | 0.8 | 0.7 | Stronger row-level bagging |
-| `reg_alpha` | 0.1 | 0.3 | Increased L1 penalty → sparse feature weights |
-| `reg_lambda` | 0.1 | 0.3 | Increased L2 penalty → smaller weights overall |
-| `learning_rate` | 0.05 | 0.03 | Slower convergence → finer optimisation |
+| `reg_alpha` | 0.1 | 0.3 | Increased L1 penalty -> sparse feature weights |
+| `reg_lambda` | 0.1 | 0.3 | Increased L2 penalty -> smaller weights overall |
+| `learning_rate` | 0.05 | 0.03 | Slower convergence -> finer optimisation |
 | `n_estimators` | 1000 (fixed) | 3000 + early stopping (50 rounds) | Actual count determined by held-out 15% validation window |
 | Early stopping | None | 15% of training data held out | Prevents overfitting by stopping when val loss plateaus |
 | Sample weights | Uniform | Exponential decay, half-life = 365 days | Recent hours weighted more heavily to adapt to regime changes |
@@ -76,8 +76,8 @@ causing deletion of all data before 2023-05-15.
 
 | Change | Before | After | Rationale |
 |---|---|---|---|
-| Regularisation (alpha) | Fixed 0.001 (Lago et al. default) | LassoCV, TimeSeriesSplit(3), alphas=[1e-4…5e-1] | Data-driven selection; optimal alpha varies across hours and regimes |
-| Cross-hour lags | None | `price_lag23h`, `price_lag25h` added | Breaks hour-silo assumption — adjacent hours share information |
+| Regularisation (alpha) | Fixed 0.001 (Lago et al. default) | LassoCV, TimeSeriesSplit(3), alphas=[1e-4...5e-1] | Data-driven selection; optimal alpha varies across hours and regimes |
+| Cross-hour lags | None | `price_lag23h`, `price_lag25h` added | Breaks hour-silo assumption - adjacent hours share information |
 | Residual quantile window | All in-sample residuals | Rolling last 365 days | Intervals adapt to current volatility; stale history dilutes the estimate |
 
 ### New features (`pipeline/features.py`)
@@ -86,8 +86,8 @@ causing deletion of all data before 2023-05-15.
 |---|---|---|
 | `price_lag23h` | AR lag | Adjacent-hour price from yesterday (cross-hour context) |
 | `price_lag25h` | AR lag | Adjacent-hour price from yesterday (cross-hour context) |
-| `price_lag72h` | AR lag | 3-day lag — captures Mon/Fri vs midweek patterns |
-| `price_lag336h` | AR lag | 2-week lag — nuclear outage scheduling cycles in SE3 |
+| `price_lag72h` | AR lag | 3-day lag - captures Mon/Fri vs midweek patterns |
+| `price_lag336h` | AR lag | 2-week lag - nuclear outage scheduling cycles in SE3 |
 | `hour_x_month` | Interaction | Seasonal time-of-day pattern (winter peak longer than summer) |
 | `weekend_x_hour` | Interaction | Weekend vs weekday daily profile differs by hour |
 | `temp_x_hour` | Interaction | Temperature effect on demand varies by hour (morning ramp-up) |
@@ -104,10 +104,10 @@ causing deletion of all data before 2023-05-15.
 
 ---
 
-## Run — 2026-05-13 19:38 UTC
+## Run - 2026-05-13 19:38 UTC
 
-**Train:** 2020-01-01 → 2026-02-12  (53,635 labelled rows)
-**Holdout:** 2026-02-12 → 2026-05-13
+**Train:** 2020-01-01 -> 2026-02-12  (53,635 labelled rows)
+**Holdout:** 2026-02-12 -> 2026-05-13
 
 **Note:** v2 improvements: LassoCV alpha, cross-hour lags 23h/25h, 72h/336h lags, hour_x_month/weekend_x_hour/temp_x_hour interactions, LightGBM early stopping + recency weights + stronger regularisation
 
@@ -127,20 +127,20 @@ causing deletion of all data before 2023-05-15.
 
 ### Delta vs previous run
 
-| | MAE Δ | Coverage Δ |
+| | MAE delta | Coverage delta |
 |---|---|---|
-| LightGBM | ▲0.23 ⚠️ | ▲8.68 ✅ |
-| LEAR | ▼1.34 ✅ | ▲0.04 ✅ |
+| LightGBM | ▲0.23 WARNING: | ▲8.68 [OK] |
+| LEAR | ▼1.34 [OK] | ▲0.04 [OK] |
 
 **LightGBM early stopping best iterations:** 357, 391, 110
 
 
 ---
 
-## Run — 2026-05-13 20:07 UTC
+## Run - 2026-05-13 20:07 UTC
 
-**Train:** 2020-01-01 → 2026-02-12  (53,636 labelled rows)
-**Holdout:** 2026-02-12 → 2026-05-13
+**Train:** 2020-01-01 -> 2026-02-12  (53,636 labelled rows)
+**Holdout:** 2026-02-12 -> 2026-05-13
 
 **Note:** Store forecasts to TimeDB, add training cache
 
@@ -160,20 +160,20 @@ causing deletion of all data before 2023-05-15.
 
 ### Delta vs previous run
 
-| | MAE Δ | Coverage Δ |
+| | MAE delta | Coverage delta |
 |---|---|---|
-| LightGBM | ▼0.01 ✅ | ▼0.01 ⚠️ |
-| LEAR | ▼0.00 ✅ | ▼0.00 ⚠️ |
+| LightGBM | ▼0.01 [OK] | ▼0.01 WARNING: |
+| LEAR | ▼0.00 [OK] | ▼0.00 WARNING: |
 
 **LightGBM early stopping best iterations:** 357, 391, 110
 
 
 ---
 
-## Run — 2026-05-14 07:09 UTC
+## Run - 2026-05-14 07:09 UTC
 
-**Train:** 2020-01-01 → 2026-02-13  (53,647 labelled rows)
-**Holdout:** 2026-02-13 → 2026-05-14
+**Train:** 2020-01-01 -> 2026-02-13  (53,647 labelled rows)
+**Holdout:** 2026-02-13 -> 2026-05-14
 
 **Note:** Routine training run
 
@@ -193,19 +193,19 @@ causing deletion of all data before 2023-05-15.
 
 ### Delta vs previous run
 
-| | MAE Δ | Coverage Δ |
+| | MAE delta | Coverage delta |
 |---|---|---|
-| LightGBM | ▼0.13 ✅ | ▼0.34 ⚠️ |
-| LEAR | ▲0.07 ⚠️ | ▼0.05 ⚠️ |
+| LightGBM | ▼0.13 [OK] | ▼0.34 WARNING: |
+| LEAR | ▲0.07 WARNING: | ▼0.05 WARNING: |
 
 **LightGBM early stopping best iterations:** 307, 336, 114
 
 
 ---
 
-## Evaluation Run — 2026-05-14 18:39 UTC
+## Evaluation Run - 2026-05-14 18:39 UTC
 
-**Mode:** quick (no retraining)  **Period:** 2026-02-13 → 2026-05-14
+**Mode:** quick (no retraining)  **Period:** 2026-02-13 -> 2026-05-14
 
 **Note:** Existing trained models; conformal correction applied to LGBM.
 
@@ -217,10 +217,10 @@ causing deletion of all data before 2023-05-15.
 
 ---
 
-## Run — 2026-05-14 18:40 UTC
+## Run - 2026-05-14 18:40 UTC
 
-**Train:** 2020-01-01 → 2026-02-13  (53,658 labelled rows)
-**Holdout:** 2026-02-13 → 2026-05-14
+**Train:** 2020-01-01 -> 2026-02-13  (53,658 labelled rows)
+**Holdout:** 2026-02-13 -> 2026-05-14
 
 **Note:** Conformal calibration + run_eval runner added
 
@@ -235,25 +235,25 @@ causing deletion of all data before 2023-05-15.
 
 | Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
 |---|---|---|---|---|---|---|
-| LGBM       | 21.74 | 28.43 | 79.5%→90.1% ✅ | 43.65 | 21.60 | 26.39 |
+| LGBM       | 21.74 | 28.43 | 79.5%->90.1% [OK] | 43.65 | 21.60 | 26.39 |
 | LEAR       | 21.26 | 27.69 | 91.6% | 37.42 | 20.98 | 25.41 |
 
 ### Delta vs previous run
 
-| | MAE Δ | Coverage Δ |
+| | MAE delta | Coverage delta |
 |---|---|---|
-| LightGBM | ▲0.15 ⚠️ | ▲10.44 ✅ |
-| LEAR | ▲0.08 ⚠️ | ▼0.05 ⚠️ |
+| LightGBM | ▲0.15 WARNING: | ▲10.44 [OK] |
+| LEAR | ▲0.08 WARNING: | ▼0.05 WARNING: |
 
 **LightGBM early stopping best iterations:** 310, 189, 112
 
 
 ---
 
-## Run — 2026-05-14 18:45 UTC
+## Run - 2026-05-14 18:45 UTC
 
-**Train:** 2020-01-01 → 2026-02-13  (53,658 labelled rows)
-**Holdout:** 2026-02-13 → 2026-05-14
+**Train:** 2020-01-01 -> 2026-02-13  (53,658 labelled rows)
+**Holdout:** 2026-02-13 -> 2026-05-14
 
 **Note:** Conformal calibration + run_eval runner added
 
@@ -261,32 +261,32 @@ causing deletion of all data before 2023-05-15.
 
 | Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
 |---|---|---|---|---|---|---|
-| LGBM       | 21.74 | 28.43 | 79.5%→90.1% ✅ | 43.65 | 21.60 | 26.39 |
+| LGBM       | 21.74 | 28.43 | 79.5%->90.1% [OK] | 43.65 | 21.60 | 26.39 |
 | LEAR       | 21.26 | 27.69 | 91.6% | 37.42 | 20.98 | 25.41 |
 
 ### After
 
 | Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
 |---|---|---|---|---|---|---|
-| LGBM       | 21.74 | 28.43 | 90.1%→79.5% ✅ | 43.65 | 21.60 | 26.39 |
+| LGBM       | 21.74 | 28.43 | 90.1%->79.5% [OK] | 43.65 | 21.60 | 26.39 |
 | LEAR       | 21.26 | 27.69 | 91.6% | 37.42 | 20.98 | 25.41 |
 
 ### Delta vs previous run
 
-| | MAE Δ | Coverage Δ |
+| | MAE delta | Coverage delta |
 |---|---|---|
-| LightGBM | ▼0.00 ⚠️ | ▼10.62 ⚠️ |
-| LEAR | ▼0.00 ⚠️ | ▼0.00 ⚠️ |
+| LightGBM | ▼0.00 WARNING: | ▼10.62 WARNING: |
+| LEAR | ▼0.00 WARNING: | ▼0.00 WARNING: |
 
 **LightGBM early stopping best iterations:** 310, 189, 112
 
 
 ---
 
-## Run — 2026-05-15 05:33 UTC
+## Run - 2026-05-15 05:33 UTC
 
-**Train:** 2020-01-01 → 2026-02-14  (53,669 labelled rows)
-**Holdout:** 2026-02-14 → 2026-05-15
+**Train:** 2020-01-01 -> 2026-02-14  (53,669 labelled rows)
+**Holdout:** 2026-02-14 -> 2026-05-15
 
 **Note:** Fix conformal re-calibration + table formatting
 
@@ -294,29 +294,29 @@ causing deletion of all data before 2023-05-15.
 
 | Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
 |---|---|---|---|---|---|---|
-| LGBM       | 21.74 | 28.43 | 90.1%→79.5% ✅ | 43.65 | 21.60 | 26.39 |
+| LGBM       | 21.74 | 28.43 | 90.1%->79.5% [OK] | 43.65 | 21.60 | 26.39 |
 | LEAR       | 21.26 | 27.69 | 91.6% | 37.42 | 20.98 | 25.41 |
 
 ### After
 
 | Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
 |---|---|---|---|---|---|---|
-| LGBM       | 21.61 | 28.26 | 79.5%→90.1% ✅ | 42.30 | 21.53 | 26.26 |
+| LGBM       | 21.61 | 28.26 | 79.5%->90.1% [OK] | 42.30 | 21.53 | 26.26 |
 | LEAR       | 21.27 | 27.73 | 91.6% | 37.42 | 21.05 | 25.41 |
 
 ### Delta vs previous run
 
-| | MAE Δ | Coverage Δ |
+| | MAE delta | Coverage delta |
 |---|---|---|
-| LightGBM | ▼0.13 ✅ | ▲10.62 ✅ |
-| LEAR | ▲0.01 ⚠️ | ▼0.05 ⚠️ |
+| LightGBM | ▼0.13 [OK] | ▲10.62 [OK] |
+| LEAR | ▲0.01 WARNING: | ▼0.05 WARNING: |
 
 **LightGBM early stopping best iterations:** 334, 318, 112
 
 
 ---
 
-## Run — 2026-05-15 05:44 UTC
+## Run - 2026-05-15 05:44 UTC
 
 **Train:** 2020-01-01 -> 2026-02-14  (53,669 labelled rows)
 **Holdout:** 2026-02-14 -> 2026-05-15
@@ -349,7 +349,7 @@ causing deletion of all data before 2023-05-15.
 
 ---
 
-## Run — 2026-06-03 14:50 UTC
+## Run - 2026-06-03 14:50 UTC
 
 **Train:** 2020-01-01 -> 2026-03-05  (54,134 labelled rows)
 **Holdout:** 2026-03-05 -> 2026-06-03
@@ -382,7 +382,7 @@ causing deletion of all data before 2023-05-15.
 
 ---
 
-## Run — 2026-06-06 08:17 UTC
+## Run - 2026-06-06 08:17 UTC
 
 **Train:** 2020-01-01 -> 2026-03-08  (54,200 labelled rows)
 **Holdout:** 2026-03-08 -> 2026-06-06
@@ -415,7 +415,7 @@ causing deletion of all data before 2023-05-15.
 
 ---
 
-## Run — 2026-06-08 11:20 UTC
+## Run - 2026-06-08 11:20 UTC
 
 **Train:** 2020-01-01 -> 2026-03-10  (54,251 labelled rows)
 **Holdout:** 2026-03-10 -> 2026-06-08
@@ -448,7 +448,7 @@ causing deletion of all data before 2023-05-15.
 
 ---
 
-## Run — 2026-06-09 18:57 UTC
+## Run - 2026-06-09 18:57 UTC
 
 **Train:** 2020-01-01 -> 2026-03-11  (54,282 labelled rows)
 **Holdout:** 2026-03-11 -> 2026-06-09
@@ -467,7 +467,7 @@ causing deletion of all data before 2023-05-15.
 
 ---
 
-## Run — 2026-06-09 19:35 UTC
+## Run - 2026-06-09 19:35 UTC
 
 **Train:** 2020-01-01 -> 2026-03-11  (54,283 labelled rows)
 **Holdout:** 2026-03-11 -> 2026-06-09

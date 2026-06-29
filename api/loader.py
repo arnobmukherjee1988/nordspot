@@ -1,4 +1,4 @@
-"""MLflow Registry loader — called once at API startup.
+"""MLflow Registry loader - called once at API startup.
 
 Queries the MLflow Model Registry for the current Production version of
 "nordspot-ensemble", downloads the artefact, and returns a populated
@@ -29,7 +29,7 @@ MODEL_NAME = os.getenv("NORDSPOT_MODEL_NAME", "nordspot-ensemble-SE3")
 def load_production_models(
     model_name: str = MODEL_NAME,
     tracking_uri: Optional[str] = None,
-) -> object:  # returns ModelStore — imported lazily to avoid circular dep
+) -> object:  # returns ModelStore - imported lazily to avoid circular dep
     """Load the Production ensemble model from the MLflow Registry.
 
     Args:
@@ -48,26 +48,26 @@ def load_production_models(
     client = MlflowClient(tracking_uri=uri)
     store = ModelStore()
 
-    # ── 1. Fetch the Production version descriptor ────────────────────────
+    # -- 1. Fetch the Production version descriptor ------------------------
     try:
         prod_versions = client.get_latest_versions(model_name, stages=["Production"])
     except Exception as exc:  # noqa: BLE001
         logger.warning(
-            "MLflow Registry unreachable (%s) — API will serve stub predictions",
+            "MLflow Registry unreachable (%s) - API will serve stub predictions",
             exc,
         )
         return store
 
     if not prod_versions:
         logger.warning(
-            "No Production model registered for '%s' — API will serve stub predictions",
+            "No Production model registered for '%s' - API will serve stub predictions",
             model_name,
         )
         return store
 
     mv = prod_versions[0]
 
-    # ── 2. Download the model artefact ────────────────────────────────────
+    # -- 2. Download the model artefact ------------------------------------
     try:
         model_uri = f"models:/{model_name}/Production"
         store.model = mlflow.pyfunc.load_model(model_uri)
@@ -85,7 +85,7 @@ def load_production_models(
         )
     except Exception as exc:  # noqa: BLE001
         logger.error(
-            "Failed to load artefact for '%s': %s — API will serve stub predictions",
+            "Failed to load artefact for '%s': %s - API will serve stub predictions",
             model_name,
             exc,
         )

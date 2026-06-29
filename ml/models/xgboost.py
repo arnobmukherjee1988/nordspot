@@ -1,19 +1,19 @@
 """XGBoost quantile regression model for NordSpot day-ahead price forecasting.
 
 Mirrors the interface of ml/models/lgbm.py exactly:
-    train(df)    → dict[str, XGBRegressor]
-    predict(df)  → pd.DataFrame with columns xgb_q05, xgb_q50, xgb_q95
-    calibrate(…) → float (split-conformal correction ĉ)
+    train(df)    -> dict[str, XGBRegressor]
+    predict(df)  -> pd.DataFrame with columns xgb_q05, xgb_q50, xgb_q95
+    calibrate(...) -> float (split-conformal correction c_hat)
 
 Reference: Marcjasz et al. (2023) "Distributional neural networks for
-electricity price forecasting." Energy Economics 106, 105742 — confirms
+electricity price forecasting." Energy Economics 106, 105742 - confirms
 XGBoost as a competitive tree-based baseline for day-ahead price forecasting.
 
 Key differences from LightGBM:
     - Uses XGBoost's native quantile objective ("reg:quantileerror") rather
-      than a pinball-loss approximation — guaranteed convex quantile loss.
+      than a pinball-loss approximation - guaranteed convex quantile loss.
     - max_depth + min_child_weight instead of num_leaves + min_child_samples.
-    - early_stopping_rounds passed to XGBRegressor constructor (XGBoost ≥2.0).
+    - early_stopping_rounds passed to XGBRegressor constructor (XGBoost >=2.0).
 """
 
 from __future__ import annotations
@@ -35,15 +35,15 @@ MODEL_DIR.mkdir(exist_ok=True)
 
 QUANTILES: dict[str, float] = {"q05": 0.05, "q50": 0.50, "q95": 0.95}
 
-# ── Hyperparameters ───────────────────────────────────────────────────────────
+# -- Hyperparameters -----------------------------------------------------------
 _XGB_PARAMS_BASE: dict = {
-    "tree_method": "hist",  # approximate histogram — fast on CPU
+    "tree_method": "hist",  # approximate histogram - fast on CPU
     "max_depth": 6,  # analogous to num_leaves=127 in LGBM
     "min_child_weight": 50,  # mirrors lgbm.min_child_samples
     "subsample": 0.7,  # row-level bagging
     "colsample_bytree": 0.6,  # feature-level bagging
-    "reg_alpha": 0.3,  # L1 penalty — mirrors lgbm.reg_alpha
-    "reg_lambda": 0.3,  # L2 penalty — mirrors lgbm.reg_lambda
+    "reg_alpha": 0.3,  # L1 penalty - mirrors lgbm.reg_alpha
+    "reg_lambda": 0.3,  # L2 penalty - mirrors lgbm.reg_lambda
     "learning_rate": 0.03,  # mirrors lgbm.learning_rate
     "n_estimators": 3000,  # ceiling; early stopping sets true count
     "n_jobs": -1,
@@ -88,11 +88,11 @@ def train(
         verbose: Print progress per quantile.
 
     Returns:
-        Dict mapping quantile name → fitted model.
+        Dict mapping quantile name -> fitted model.
     """
     x, y = _prep(df)
     if y is None or len(y) == 0:
-        raise ValueError("No labelled rows — 'price' column is all NaN.")
+        raise ValueError("No labelled rows - 'price' column is all NaN.")
 
     n = len(x)
     # Cap n_val at n//2 so n_tr is always positive even on small datasets.
@@ -145,7 +145,7 @@ def calibrate(
 ) -> float:
     """Fit split-conformal correction on holdout predictions and save it.
 
-    Identical algorithm to lgbm.calibrate — see that docstring for derivation.
+    Identical algorithm to lgbm.calibrate - see that docstring for derivation.
     """
     idx = (
         actuals.dropna()
@@ -153,7 +153,7 @@ def calibrate(
         .intersection(q95_preds.dropna().index)
     )
     if len(idx) == 0:
-        raise ValueError("No overlapping non-NaN rows — cannot calibrate.")
+        raise ValueError("No overlapping non-NaN rows - cannot calibrate.")
 
     y = actuals[idx].values
     lo = q05_preds[idx].values
@@ -178,13 +178,13 @@ def calibrate(
     print(
         f"  [OK] XGBoost conformal calibration:  "
         f"raw coverage {raw_coverage:.1%} -> target {target_coverage:.0%}  "
-        f"| ĉ = {correction:+.3f} EUR/MWh  (n_cal = {n:,})"
+        f"| c_hat = {correction:+.3f} EUR/MWh  (n_cal = {n:,})"
     )
     return correction
 
 
 def _load_conformal_correction() -> float | None:
-    """Return saved conformal correction ĉ, or None if not yet calibrated."""
+    """Return saved conformal correction c_hat, or None if not yet calibrated."""
     if not CONFORMAL_PATH.exists():
         return None
     with open(CONFORMAL_PATH, "rb") as f:
@@ -196,7 +196,7 @@ def predict(df: pd.DataFrame, apply_conformal: bool = True) -> pd.DataFrame:
 
     Args:
         df:               Feature matrix from pipeline.features.build_features().
-        apply_conformal:  Widen [q05, q95] by ĉ if calibration file exists.
+        apply_conformal:  Widen [q05, q95] by c_hat if calibration file exists.
                           Pass False when predicting for calibration itself.
 
     Returns:

@@ -24,7 +24,7 @@ _YESTERDAY = datetime.date.today() - datetime.timedelta(days=1)
 _NEXT_WEEK = datetime.date.today() + datetime.timedelta(days=7)
 
 
-# ── ForecastRequest ───────────────────────────────────────────────────────────
+# -- ForecastRequest -----------------------------------------------------------
 
 
 def test_forecast_request_valid():
@@ -55,7 +55,7 @@ def test_forecast_request_lowercase_zone_raises():
 
 
 def test_forecast_request_today_raises():
-    """Today is not a valid forecast date — day-ahead requires at least tomorrow."""
+    """Today is not a valid forecast date - day-ahead requires at least tomorrow."""
     with pytest.raises(ValidationError):
         ForecastRequest(zone="SE3", date=_TODAY)
 
@@ -65,7 +65,7 @@ def test_forecast_request_past_date_raises():
         ForecastRequest(zone="SE3", date=_YESTERDAY)
 
 
-# ── HourlyForecast ────────────────────────────────────────────────────────────
+# -- HourlyForecast ------------------------------------------------------------
 
 
 def test_hourly_forecast_fields():
@@ -86,7 +86,7 @@ def test_hourly_forecast_hour_23():
     assert hf.hour == 23
 
 
-# ── ForecastResponse ──────────────────────────────────────────────────────────
+# -- ForecastResponse ----------------------------------------------------------
 
 
 def test_forecast_response_round_trip():

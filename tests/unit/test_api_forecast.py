@@ -10,12 +10,12 @@ All tests use an autouse fixture that:
       files are accessed
 
 Tests cover:
-    - Happy path: valid zone + future date → 200 with 24-hour forecast
-    - Input validation: invalid zone, today, yesterday → 422
+    - Happy path: valid zone + future date -> 200 with 24-hour forecast
+    - Input validation: invalid zone, today, yesterday -> 422
     - Response shape: 24 hours, hours 0-23, q05/point/q95 present
     - Zone mirroring: response zone matches request zone
-    - Authentication: missing key → 401, wrong key → 401
-    - Service unavailable: no Production model → 503
+    - Authentication: missing key -> 401, wrong key -> 401
+    - Service unavailable: no Production model -> 503
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ _TODAY = datetime.date.today().isoformat()
 _YESTERDAY = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
 _NEXT_WEEK = (datetime.date.today() + datetime.timedelta(days=7)).isoformat()
 
-# ── Stub prediction data ──────────────────────────────────────────────────────
+# -- Stub prediction data ------------------------------------------------------
 
 _STUB_FEATURES = pd.DataFrame({"dummy": range(24)})
 _STUB_PREDS = pd.DataFrame(
@@ -50,7 +50,7 @@ _STUB_PREDS = pd.DataFrame(
     }
 )
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
+# -- Fixtures ------------------------------------------------------------------
 
 
 @pytest.fixture(autouse=True)
@@ -76,7 +76,7 @@ def _ready_store_and_mock_inference(monkeypatch):
     app.state.model_store = ModelStore()
 
 
-# ── Happy path ────────────────────────────────────────────────────────────────
+# -- Happy path ----------------------------------------------------------------
 
 
 def test_forecast_returns_200():
@@ -149,7 +149,7 @@ def test_forecast_q95_comes_from_ens_q95():
     assert response.json()["forecast"][0]["q95"] == 70.0
 
 
-# ── Validation errors (422) ───────────────────────────────────────────────────
+# -- Validation errors (422) ---------------------------------------------------
 
 
 def test_forecast_invalid_zone_returns_422():
@@ -182,7 +182,7 @@ def test_forecast_empty_body_returns_422():
     assert response.status_code == 422
 
 
-# ── Authentication (401) ──────────────────────────────────────────────────────
+# -- Authentication (401) ------------------------------------------------------
 
 
 def test_forecast_returns_401_when_key_missing():
@@ -202,7 +202,7 @@ def test_forecast_returns_401_when_key_wrong():
     assert response.status_code == 401
 
 
-# ── Service unavailable (503) ─────────────────────────────────────────────────
+# -- Service unavailable (503) -------------------------------------------------
 
 
 def test_forecast_returns_503_when_model_not_loaded():

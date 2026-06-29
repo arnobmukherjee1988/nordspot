@@ -5,7 +5,7 @@ set -e
 MODEL_DIR="/app/model"
 
 if [ -n "$S3_BUCKET" ] && [ -z "$(ls -A $MODEL_DIR 2>/dev/null)" ]; then
-    echo "[entrypoint] model/ is empty — downloading artifacts from s3://$S3_BUCKET/model/ ..."
+    echo "[entrypoint] model/ is empty - downloading artifacts from s3://$S3_BUCKET/model/ ..."
     python3 - << 'PYEOF'
 import boto3, os
 from pathlib import Path
@@ -24,7 +24,7 @@ for page in paginator.paginate(Bucket=bucket, Prefix="model/"):
 print(f"[entrypoint] Downloaded {count} files from S3.")
 PYEOF
 else
-    echo "[entrypoint] model/ already populated or S3_BUCKET not set — skipping download."
+    echo "[entrypoint] model/ already populated or S3_BUCKET not set - skipping download."
 fi
 
 exec "$@"

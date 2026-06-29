@@ -41,7 +41,7 @@ def fetch_prices(zone: ZoneConfig, start: datetime, end: datetime) -> pd.DataFra
 
 
 def sync_prices(zone: ZoneConfig, start: datetime, end: datetime) -> int:
-    """Fetch prices → write to Bronze → write to ClickHouse. Returns row count."""
+    """Fetch prices -> write to Bronze -> write to ClickHouse. Returns row count."""
     df = fetch_prices(zone, start, end)
 
     # Bronze layer: one Parquet file per day

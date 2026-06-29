@@ -7,7 +7,7 @@ promotion to Silver.  Call ``validate_prices(df)`` and inspect
 Expected schema
 ---------------
     valid_time  : datetime64[ns, UTC]   unique hourly timestamps
-    value       : float64               EUR/MWh — no nulls, sane range
+    value       : float64               EUR/MWh - no nulls, sane range
     zone        : str                   ENTSO-E EIC code
 """
 

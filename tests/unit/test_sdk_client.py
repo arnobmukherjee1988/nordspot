@@ -16,7 +16,7 @@ import requests
 
 from sdk import NordSpotClient, NordSpotError
 
-# ── Constants ─────────────────────────────────────────────────────────────────
+# -- Constants -----------------------------------------------------------------
 
 _BASE_URL = "http://testserver"
 _API_KEY = "test-key-xyz"
@@ -41,7 +41,7 @@ _FORECAST_PAYLOAD = {
     ],
 }
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helpers -------------------------------------------------------------------
 
 
 def _mock_response(payload: dict, status_code: int = 200) -> MagicMock:
@@ -59,7 +59,7 @@ def client():
     return NordSpotClient(base_url=_BASE_URL, api_key=_API_KEY)
 
 
-# ── health() tests ────────────────────────────────────────────────────────────
+# -- health() tests ------------------------------------------------------------
 
 
 def test_health_returns_dict(client):
@@ -86,7 +86,7 @@ def test_health_hits_correct_url(client):
     mock_get.assert_called_once_with(f"{_BASE_URL}/health", timeout=30)
 
 
-# ── get_forecast() tests ──────────────────────────────────────────────────────
+# -- get_forecast() tests ------------------------------------------------------
 
 
 def test_get_forecast_returns_dict(client):
@@ -138,7 +138,7 @@ def test_api_key_header_sent(client):
     assert client._session.headers["X-API-Key"] == _API_KEY
 
 
-# ── Error handling ────────────────────────────────────────────────────────────
+# -- Error handling ------------------------------------------------------------
 
 
 def test_non_2xx_raises_nordspot_error(client):
@@ -190,7 +190,7 @@ def test_nordspot_error_str_contains_status_and_detail(client):
     assert "Not found" in err_str
 
 
-# ── Miscellaneous ─────────────────────────────────────────────────────────────
+# -- Miscellaneous -------------------------------------------------------------
 
 
 def test_base_url_trailing_slash_stripped():

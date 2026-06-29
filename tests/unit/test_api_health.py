@@ -1,6 +1,6 @@
 """Unit tests for GET /health.
 
-Uses FastAPI's TestClient (backed by httpx) — no server process needed.
+Uses FastAPI's TestClient (backed by httpx) - no server process needed.
 Verifies response status, schema fields, and zone coverage.
 """
 

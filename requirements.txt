@@ -1,16 +1,16 @@
-# ── Data pipeline ─────────────────────────────────────────────────────────────
+# -- Data pipeline -------------------------------------------------------------
 entsoe-py==0.8.0           # ENTSO-E API client (prices, generation, flows)
 openmeteo-requests==1.7.5  # Open-Meteo weather API client
 requests-cache==1.3.2      # HTTP caching (avoids re-fetching same weather data)
 retry-requests==2.0.0      # Automatic retry on API failures
 
-# ── Database ──────────────────────────────────────────────────────────────────
-git+https://github.com/rebase-energy/timedb.git@b07591e4c1a172a55d271affe2063d49a4f50ce8  # TimeDB SDK (not the PyPI 'timedb' — different package)
+# -- Database ------------------------------------------------------------------
+git+https://github.com/rebase-energy/timedb.git@b07591e4c1a172a55d271affe2063d49a4f50ce8  # TimeDB SDK (not the PyPI 'timedb' - different package)
 clickhouse-connect>=0.7    # Native HTTP client for ClickHouse (zone-aware tables)
 python-dotenv==1.2.2       # Load .env file into environment variables
-boto3>=1.34                # AWS SDK — used for S3 model artifact sync
+boto3>=1.34                # AWS SDK - used for S3 model artifact sync
 
-# ── ML ────────────────────────────────────────────────────────────────────────
+# -- ML ------------------------------------------------------------------------
 lightgbm==4.6.0            # Primary forecasting model (quantile regression)
 xgboost>=2.0,<3.0          # XGBoost quantile model (reg:quantileerror, Story 4.3)
 catboost>=1.2,<2.0         # CatBoost quantile model (native categoricals, Story 4.4)
@@ -19,27 +19,27 @@ numpy>=2.0.0              # feast 0.64 requires >=2.0; GE 0.18 declares <2.0 but
 pandas==2.3.3
 holidays==0.96             # Swedish public holiday calendar
 mlflow>=2.13,<3.0          # Experiment tracking, model registry (Epic 4)
-shap>=0.44,<1.0            # SHAP interpretability — TreeExplainer for LGBM/XGB/CatBoost (Story 4.5)
+shap>=0.44,<1.0            # SHAP interpretability - TreeExplainer for LGBM/XGB/CatBoost (Story 4.5)
 
-# ── Data quality & transforms ─────────────────────────────────────────────────
+# -- Data quality & transforms -------------------------------------------------
 great-expectations>=0.18,<1.0  # Bronze-layer expectation suites (PandasDataset API)
-dbt-core>=1.11                 # SQL transform layer (Silver → Gold)
+dbt-core>=1.11                 # SQL transform layer (Silver -> Gold)
 dbt-clickhouse>=1.10           # dbt adapter for ClickHouse
 feast>=0.40,<1.0               # Feature store (local: file+SQLite; prod: BigQuery+Redis)
 
-# ── Evaluation ────────────────────────────────────────────────────────────────
+# -- Evaluation ----------------------------------------------------------------
 properscoring==0.1         # CRPS computation (probabilistic forecast metric)
 
-# ── API serving ───────────────────────────────────────────────────────────────
+# -- API serving ---------------------------------------------------------------
 fastapi>=0.111,<1.0           # REST API framework (Epic 5)
 uvicorn[standard]>=0.29,<1.0  # ASGI server for FastAPI
-httpx>=0.27,<1.0              # HTTP client — also required by FastAPI TestClient
+httpx>=0.27,<1.0              # HTTP client - also required by FastAPI TestClient
 
-# ── Dashboard ─────────────────────────────────────────────────────────────────
+# -- Dashboard -----------------------------------------------------------------
 streamlit>=1.40.0             # 1.40+ supports protobuf>=5 (required by dbt-core>=1.11)
 plotly==6.7.0
 pytz==2026.2
 
-# ── Visualisation (only needed locally for demo GIF generation — skip on server) ──
+# -- Visualisation (only needed locally for demo GIF generation - skip on server) --
 # matplotlib==3.10.9
 # Pillow==10.4.0

@@ -14,7 +14,7 @@ import pytest
 import ml.models.catboost as cat_mod
 from ml.models.lgbm import FEATURE_COLS
 
-# ── Fixtures ──────────────────────────────────────────────────────────────────
+# -- Fixtures ------------------------------------------------------------------
 
 
 @pytest.fixture()
@@ -43,7 +43,7 @@ def train_df() -> pd.DataFrame:
     )
     df.index.name = "valid_time"
 
-    # Categorical features must be integers — set realistic ranges
+    # Categorical features must be integers - set realistic ranges
     df["hour"] = (idx.hour).astype(int)
     df["weekday"] = (idx.dayofweek).astype(int)
     df["month"] = (idx.month).astype(int)
@@ -52,7 +52,7 @@ def train_df() -> pd.DataFrame:
     return df
 
 
-# ── Tests ─────────────────────────────────────────────────────────────────────
+# -- Tests ---------------------------------------------------------------------
 
 
 def test_train_returns_three_quantile_models(fast_cb, model_dir, train_df):
@@ -97,7 +97,7 @@ def test_calibrate_returns_float_and_saves_bundle(fast_cb, model_dir, train_df):
 
 
 def test_conformal_widens_interval(fast_cb, model_dir, train_df):
-    """After calibrate() with positive ĉ, predict() must widen the interval."""
+    """After calibrate() with positive c_hat, predict() must widen the interval."""
     cat_mod.train(train_df, verbose=False)
     raw = cat_mod.predict(train_df, apply_conformal=False)
 

@@ -1,11 +1,11 @@
 """SHAP interpretability for NordSpot tree-based forecasting models.
 
 Provides two public surfaces:
-    compute_shap(model, X)          → shap.Explanation
-    log_shap_artifacts(model, X, prefix)  → logs 2 figures to the active MLflow run
+    compute_shap(model, X)          -> shap.Explanation
+    log_shap_artifacts(model, X, prefix)  -> logs 2 figures to the active MLflow run
 
 All three model families (LightGBM, XGBoost, CatBoost) are handled identically
-via shap.TreeExplainer — it auto-detects model type and uses exact tree SHAP
+via shap.TreeExplainer - it auto-detects model type and uses exact tree SHAP
 (polynomial complexity in tree depth, not exponential in features).
 
 Design decisions:
@@ -14,7 +14,7 @@ Design decisions:
     - Waterfall figure uses shap.plots.waterfall for the signed decomposition
       with a clean matplotlib fallback if that API is unavailable.
     - Sampling cap of 200 rows for background keeps compute time < 5 s even
-      on 3 × 3000-tree ensembles.
+      on 3 x 3000-tree ensembles.
 
 Reference: Lundberg & Lee (2017) "A unified approach to interpreting model
 predictions." NeurIPS 30.
@@ -38,7 +38,7 @@ def compute_shap(
 ) -> shap.Explanation:
     """Return exact TreeSHAP Explanation for model on feature matrix x.
 
-    Supports LightGBM, XGBoost, and CatBoost — shap.TreeExplainer handles
+    Supports LightGBM, XGBoost, and CatBoost - shap.TreeExplainer handles
     all three natively via their internal tree structures.
 
     Args:
@@ -49,7 +49,7 @@ def compute_shap(
                CatBoost models before calling.
 
     Returns:
-        shap.Explanation with .values (n_samples × n_features), .base_values,
+        shap.Explanation with .values (n_samples x n_features), .base_values,
         and .feature_names attributes.
     """
     explainer = shap.TreeExplainer(model)
@@ -128,7 +128,7 @@ def log_shap_artifacts(
         max_display: Top N features to show in the summary chart.
 
     Returns:
-        [summary_fig, waterfall_fig] — already logged; caller may close them.
+        [summary_fig, waterfall_fig] - already logged; caller may close them.
     """
     x_bg = x.sample(min(_SAMPLE_CAP, len(x)), random_state=0)
 

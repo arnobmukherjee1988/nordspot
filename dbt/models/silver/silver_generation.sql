@@ -2,7 +2,7 @@
 
 /*
     silver_generation
-    ─────────────────
+    -----------------
     Cleans and validates the raw generation_actual Silver table.
 
     Transforms applied:

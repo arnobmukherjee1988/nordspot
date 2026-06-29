@@ -2,7 +2,7 @@
 Idempotent ClickHouse migration runner.
 
 Creates all zone-aware Silver tables (generation_actual, load_actual,
-crossborder_flows). Safe to run multiple times — uses CREATE TABLE IF NOT EXISTS.
+crossborder_flows). Safe to run multiple times - uses CREATE TABLE IF NOT EXISTS.
 
 Usage:
     python scripts/migrate_clickhouse.py
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     args = _parse_args()
 
     if args.dry_run:
-        print("── DRY RUN — no changes made ──────────────────────────\n")
+        print("-- DRY RUN - no changes made --------------------------\n")
         for table_name, ddl in ZONE_TABLE_DDL.items():
             print(f"-- Table: {table_name}")
             print(ddl.strip())

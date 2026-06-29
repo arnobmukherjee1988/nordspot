@@ -9,7 +9,7 @@ Reads connection details from environment variables:
     CLICKHOUSE_DB        (default: nordspot)
 
 These are set automatically in Docker Compose via the nordspot_clickhouse service.
-For local development outside Docker, copy .env.example → .env and adjust as needed.
+For local development outside Docker, copy .env.example -> .env and adjust as needed.
 """
 
 import os

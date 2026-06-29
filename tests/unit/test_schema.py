@@ -1,4 +1,4 @@
-"""Unit tests for db/schema.py — verify DDL strings and structure.
+"""Unit tests for db/schema.py - verify DDL strings and structure.
 
 No ClickHouse connection required: we test the DDL strings and
 function signatures without executing anything against a database.
@@ -8,7 +8,7 @@ import pytest
 
 from db.schema import SERIES, ZONE_TABLE_DDL
 
-# ── SERIES registry ───────────────────────────────────────────────────────────
+# -- SERIES registry -----------------------------------------------------------
 
 
 def test_series_ids_are_unique():
@@ -28,7 +28,7 @@ def test_required_series_keys_present():
     assert required.issubset(SERIES.keys())
 
 
-# ── Zone-table DDL ────────────────────────────────────────────────────────────
+# -- Zone-table DDL ------------------------------------------------------------
 
 
 def test_zone_table_ddl_has_three_tables():

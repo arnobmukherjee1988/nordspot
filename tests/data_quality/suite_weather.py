@@ -6,9 +6,9 @@ Open-Meteo variable) before promotion to Silver.
 Expected schema
 ---------------
     valid_time         : datetime64[ns, UTC]
-    temperature_2m     : float64   °C      range −50 … +60
+    temperature_2m     : float64   degC      range -50 ... +60
     wind_speed_10m     : float64   m/s     non-negative
-    shortwave_radiation: float64   W/m²    non-negative
+    shortwave_radiation: float64   W/m^2    non-negative
     zone               : str               ENTSO-E EIC code
 """
 
