@@ -1,0 +1,18 @@
+project: nordspot
+provider: local
+
+# Local backend — swap to BigQuery + Redis in Epic 7 (GCP).
+# All paths are relative to this file (feast/ directory).
+
+registry:
+    registry_type: file
+    path: data/feast_registry.db     # feast/data/feast_registry.db
+
+offline_store:
+    type: file                        # DuckDB-backed local file store
+
+online_store:
+    type: sqlite
+    path: data/feast_online.db        # feast/data/feast_online.db
+
+entity_key_serialization_version: 3

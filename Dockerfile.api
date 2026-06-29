@@ -1,11 +1,46 @@
 # NordSpot FastAPI serving image
-# Implemented in Epic 5. This stub ensures the file exists in the correct location.
 #
-# FROM python:3.11-slim
-# WORKDIR /app
-# COPY requirements.txt .
-# RUN pip install --no-cache-dir -r requirements.txt
-# COPY api/ ./api/
-# COPY ml/ ./ml/
-# EXPOSE 8000
-# CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Build:  docker build -f Dockerfile.api -t nordspot-api .
+# Run:    docker run -p 8000:8000 --env-file .env nordspot-api
+#
+# The image is intentionally slim — only the packages needed to serve the API
+# are installed. Training dependencies (lightgbm, xgboost, catboost, shap,
+# great-expectations, dbt, feast) are NOT included.
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install system dependencies for compiled packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir \
+    fastapi>=0.111 \
+    "uvicorn[standard]>=0.29" \
+    httpx>=0.27 \
+    pydantic>=2.0 \
+    mlflow>=2.13 \
+    numpy>=2.0.0 \
+    pandas==2.3.3 \
+    scikit-learn==1.8.0 \
+    lightgbm==4.6.0 \
+    python-dotenv==1.2.2
+
+# Copy application code
+COPY api/ ./api/
+COPY ml/ ./ml/
+COPY config/ ./config/
+COPY model/ ./model/
+
+# Expose API port
+EXPOSE 8000
+
+# Non-root user for security
+RUN adduser --disabled-password --gecos "" nordspot
+USER nordspot
+
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

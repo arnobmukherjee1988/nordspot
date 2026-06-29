@@ -32,6 +32,15 @@ __pycache__/
 .vscode/
 .idea/
 
+# dbt — credentials and build artefacts (never commit)
+dbt/profiles.yml
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+
+# Feast — local registry and online store (generated at runtime)
+feature_store/data/
+
 # Personal / private docs (never push to GitHub)
 docs/
 
@@ -47,3 +56,4 @@ demo.gif
 example.gif
 example_frame0.png
 make_demo_gif.py
+catboost_info/
