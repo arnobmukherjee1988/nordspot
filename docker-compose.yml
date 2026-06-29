@@ -99,7 +99,7 @@ services:
     volumes:
       - ./model:/app/model
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8000/health"]
       interval: 15s
       timeout: 5s
       retries: 4

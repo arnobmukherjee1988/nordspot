@@ -64,8 +64,8 @@ def _build_rolling_stats(price: pd.Series) -> list[pd.Series]:
     """Rolling mean/std shifted 24h to prevent leakage."""
     base = price.shift(24).rename("price")
     return [
-        base.rolling(24, min_periods=1).mean().rename("price_roll24h_mean"),
-        base.rolling(168, min_periods=1).mean().rename("price_roll168h_mean"),
+        base.rolling(24, min_periods=1).mean().rename("price_roll24h"),
+        base.rolling(168, min_periods=1).mean().rename("price_roll168h"),
         base.rolling(168, min_periods=1).std().rename("price_roll168h_std"),
         base.rolling(720, min_periods=1).std().rename("price_roll720h_std"),
     ]
@@ -259,17 +259,13 @@ def build_features(
     temp = (
         _read_series(td, SERIES["weather_temperature"])
         .reindex(idx)
-        .rename("temperature_2m")
+        .rename("temperature")
     )
     wind = (
-        _read_series(td, SERIES["weather_wind_speed"])
-        .reindex(idx)
-        .rename("wind_speed_10m")
+        _read_series(td, SERIES["weather_wind_speed"]).reindex(idx).rename("wind_speed")
     )
     solar = (
-        _read_series(td, SERIES["weather_irradiance"])
-        .reindex(idx)
-        .rename("solar_radiation")
+        _read_series(td, SERIES["weather_irradiance"]).reindex(idx).rename("irradiance")
     )
     weather_interactions = _build_weather_interactions(temp, wind, cal["hour"])
 
@@ -299,6 +295,16 @@ def build_features(
         ],
         axis=1,
     )
+    # Forward-fill weather columns: historical data is always complete; for
+    # future dates (inference horizon) the last known value is the best proxy.
+    for col in ("temperature", "wind_speed", "irradiance"):
+        if col in df.columns:
+            df[col] = df[col].ffill()
+    # Recompute weather interactions after ffill so they are never NaN
+    if "temperature" in df.columns and "wind_speed" in df.columns:
+        df["temp_x_wind"] = df["temperature"] * df["wind_speed"]
+        df["temp_x_hour"] = df["temperature"] * df["hour"]
+
     df.index.name = "valid_time"
     df = df.reset_index()  # valid_time as column - required by Feast
     df.insert(1, "zone", eic)  # zone column immediately after valid_time

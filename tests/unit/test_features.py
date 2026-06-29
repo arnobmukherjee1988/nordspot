@@ -91,8 +91,8 @@ def test_rolling_mean_24h_is_shifted(price):
     stats = {s.name: s for s in _build_rolling_stats(price)}
     expected = price.shift(24).rename("price").rolling(24, min_periods=1).mean()
     pd.testing.assert_series_equal(
-        stats["price_roll24h_mean"],
-        expected.rename("price_roll24h_mean"),
+        stats["price_roll24h"],
+        expected.rename("price_roll24h"),
     )
 
 

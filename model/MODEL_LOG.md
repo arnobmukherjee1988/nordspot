@@ -663,3 +663,35 @@ causing deletion of all data before 2023-05-15.
 | LEAR | -0.00 [!] | -0.00 [!] |
 
 **LightGBM early stopping best iterations:** 508, 166, 91
+
+---
+
+## Run - 2026-06-29 18:18 UTC
+
+**Train:** 2020-01-01 -> 2026-03-31  (28,458 labelled rows)
+**Holdout:** 2026-03-31 -> 2026-06-29
+
+**Note:** Routine training run
+
+### Before
+
+| Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
+|---|---|---|---|---|---|---|
+| LGBM       | 60.64 | 74.74 | 16.0%->16.0% [OK] | 62.42 | 62.62 | 58.81 |
+| LEAR       | 60.64 | 74.74 | 16.0% | 62.42 | 62.62 | 58.81 |
+
+### After
+
+| Model | MAE | RMSE | Coverage | Spike MAE | Night MAE | Peak MAE |
+|---|---|---|---|---|---|---|
+| LGBM       | 20.68 | 26.34 | 84.4%->94.0% [OK] | 39.00 | 19.63 | 22.95 |
+| LEAR       | 25.37 | 31.22 | 80.2% | 48.70 | 25.69 | 27.68 |
+
+### Delta vs previous run
+
+| | MAE delta | Coverage delta |
+|---|---|---|
+| LightGBM | -39.97 [OK] | +78.01 [OK] |
+| LEAR | -35.27 [OK] | +64.21 [OK] |
+
+**LightGBM early stopping best iterations:** 388, 186, 98

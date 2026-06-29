@@ -71,7 +71,10 @@ def _model_path(quantile_name: str) -> Path:
 
 
 def _prep(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series | None]:
-    """Return (X, y) with cat_features cast to int and NaN rows dropped."""
+    """Return (X, y) with cat_features cast to int and NaN rows dropped.
+
+    Used for training only. For inference use _prep_features_only().
+    """
     available = [c for c in FEATURE_COLS if c in df.columns]
     x = df[available].copy()
     y = df["price"] if "price" in df.columns else None
@@ -91,6 +94,20 @@ def _prep(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series | None]:
         y = y[labelled]
 
     return x, y
+
+
+def _prep_features_only(df: pd.DataFrame) -> pd.DataFrame:
+    """Return X with cat_features cast to int and NaN-feature rows dropped.
+
+    Used for inference: does NOT filter by label (price is NaN for future dates).
+    """
+    available = [c for c in FEATURE_COLS if c in df.columns]
+    x = df[available].copy()
+    for col in CAT_FEATURE_COLS:
+        if col in x.columns:
+            x[col] = x[col].astype(int)
+    valid = x.notna().all(axis=1)
+    return x[valid]
 
 
 def train(
@@ -219,7 +236,7 @@ def predict(df: pd.DataFrame, apply_conformal: bool = True) -> pd.DataFrame:
     Returns:
         DataFrame with columns cat_q05, cat_q50, cat_q95 (same index as df).
     """
-    x, _ = _prep(df)
+    x = _prep_features_only(df)
     out = pd.DataFrame(index=df.index)
 
     available_cat = [c for c in CAT_FEATURE_COLS if c in x.columns]

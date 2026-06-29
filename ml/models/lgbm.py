@@ -120,7 +120,10 @@ def _recency_weights(n: int) -> np.ndarray:
 
 
 def _prep(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series | None]:
-    """Return (X, y) - rows with any NaN feature dropped."""
+    """Return (X, y) - rows with any NaN feature OR NaN label dropped.
+
+    Used for training only. For inference use _prep_features_only().
+    """
     available = [c for c in FEATURE_COLS if c in df.columns]
     X = df[available].copy()
     y = df["price"] if "price" in df.columns else None
@@ -134,6 +137,17 @@ def _prep(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series | None]:
         y = y[labelled]
 
     return X, y
+
+
+def _prep_features_only(df: pd.DataFrame) -> pd.DataFrame:
+    """Return X with rows that have any NaN feature dropped.
+
+    Used for inference: does NOT filter by label (price is NaN for future dates).
+    """
+    available = [c for c in FEATURE_COLS if c in df.columns]
+    X = df[available].copy()
+    valid = X.notna().all(axis=1)
+    return X[valid]
 
 
 def train(
@@ -288,7 +302,7 @@ def predict(df: pd.DataFrame, apply_conformal: bool = True) -> pd.DataFrame:
 
     The q50 point forecast is never modified.
     """
-    X, _ = _prep(df)
+    X = _prep_features_only(df)
     out = pd.DataFrame(index=df.index)
 
     for name in QUANTILES:

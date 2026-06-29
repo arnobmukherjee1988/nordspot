@@ -61,7 +61,10 @@ def _model_path(quantile_name: str) -> Path:
 
 
 def _prep(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series | None]:
-    """Return (X, y) dropping rows with any NaN feature."""
+    """Return (X, y) dropping rows with any NaN feature OR NaN label.
+
+    Used for training only. For inference use _prep_features_only().
+    """
     available = [c for c in FEATURE_COLS if c in df.columns]
     x = df[available].copy()
     y = df["price"] if "price" in df.columns else None
@@ -75,6 +78,17 @@ def _prep(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series | None]:
         y = y[labelled]
 
     return x, y
+
+
+def _prep_features_only(df: pd.DataFrame) -> pd.DataFrame:
+    """Return X with rows that have any NaN feature dropped.
+
+    Used for inference: does NOT filter by label (price is NaN for future dates).
+    """
+    available = [c for c in FEATURE_COLS if c in df.columns]
+    x = df[available].copy()
+    valid = x.notna().all(axis=1)
+    return x[valid]
 
 
 def train(
@@ -202,7 +216,7 @@ def predict(df: pd.DataFrame, apply_conformal: bool = True) -> pd.DataFrame:
     Returns:
         DataFrame with columns xgb_q05, xgb_q50, xgb_q95 (same index as df).
     """
-    x, _ = _prep(df)
+    x = _prep_features_only(df)
     out = pd.DataFrame(index=df.index)
 
     for name in QUANTILES:

@@ -45,11 +45,11 @@ def _make_df(n_days: int = 3, zone_eic: str = _ZONE_EIC) -> pd.DataFrame:
             "price": rng.normal(50, 10, n),
             "price_lag24h": rng.normal(50, 10, n),
             "price_lag168h": rng.normal(50, 10, n),
-            "price_roll24h_mean": rng.normal(50, 5, n),
+            "price_roll24h": rng.normal(50, 5, n),
             "hour": [t.hour for t in idx],
             "weekday": [t.dayofweek for t in idx],
-            "temperature_2m": rng.normal(15, 5, n),
-            "wind_speed_10m": rng.uniform(0, 15, n),
+            "temperature": rng.normal(15, 5, n),
+            "wind_speed": rng.uniform(0, 15, n),
             "load_mw": rng.normal(5000, 500, n),
         }
     )
