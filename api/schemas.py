@@ -16,7 +16,9 @@ import datetime as dt
 from datetime import date, datetime
 from typing import List, Literal
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
+
+_TOMORROW_STR = (dt.date.today() + dt.timedelta(days=1)).isoformat()
 
 
 class ForecastRequest(BaseModel):
@@ -28,6 +30,15 @@ class ForecastRequest(BaseModel):
               Day-ahead prices are published the evening before delivery, so
               requesting today or yesterday has no operational value.
     """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "zone": "SE3",
+                "date": _TOMORROW_STR,
+            }
+        }
+    )
 
     zone: Literal["SE1", "SE2", "SE3", "SE4"]
     date: date
@@ -51,6 +62,17 @@ class HourlyForecast(BaseModel):
         q95:   95th percentile — upper bound of the 90% prediction interval.
     """
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "hour": 14,
+                "point": 62.45,
+                "q05": 48.10,
+                "q95": 79.30,
+            }
+        }
+    )
+
     hour: int
     point: float
     q05: float
@@ -67,6 +89,21 @@ class ForecastResponse(BaseModel):
         generated_at:  UTC timestamp when the forecast was produced.
         forecast:      List of 24 HourlyForecast objects (hour 0 through 23).
     """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "zone": "SE3",
+                "date": _TOMORROW_STR,
+                "model_version": "12",
+                "generated_at": "2026-06-30T08:00:00Z",
+                "forecast": [
+                    {"hour": h, "point": 60.0 + h * 0.5, "q05": 45.0, "q95": 78.0}
+                    for h in range(24)
+                ],
+            }
+        }
+    )
 
     zone: str
     date: date

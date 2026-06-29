@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 router = APIRouter()
 
@@ -31,6 +31,19 @@ class HealthResponse(BaseModel):
         api_version:   Semantic API version string.
         timestamp:     UTC timestamp of when this health response was generated.
     """
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "status": "ok",
+                "model_version": "12",
+                "trained_at": "2026-06-28T14:32:00Z",
+                "zones_covered": ["SE1", "SE2", "SE3", "SE4"],
+                "api_version": "v1",
+                "timestamp": "2026-06-30T08:00:00Z",
+            }
+        }
+    )
 
     status: str
     model_version: str

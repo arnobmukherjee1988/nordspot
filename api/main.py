@@ -50,16 +50,51 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
 
 # ── App factory ───────────────────────────────────────────────────────────────
 
+_TAGS_METADATA = [
+    {
+        "name": "Forecast",
+        "description": (
+            "24-hour ahead probabilistic day-ahead electricity price forecasts "
+            "for Swedish bidding zones SE1–SE4. "
+            "Each response includes a point estimate (q50) and a 90% prediction "
+            "interval [q05, q95] for every delivery hour. "
+            "**Requires `X-API-Key` header.**"
+        ),
+    },
+    {
+        "name": "Health",
+        "description": (
+            "Liveness probe — returns API status, loaded model version, and "
+            "zone coverage. No authentication required."
+        ),
+    },
+]
+
 app = FastAPI(
     title="NordSpot",
     description=(
         "Production-grade electricity spot price forecasting API. "
-        "Returns 24-hour ahead probabilistic forecasts (point + 90% interval) "
-        "for all Swedish bidding zones (SE1-SE4)."
+        "Returns 24-hour ahead probabilistic forecasts (point + 90% prediction interval) "
+        "for all Swedish bidding zones (SE1–SE4).\n\n"
+        "## Authentication\n\n"
+        "All forecast endpoints require an `X-API-Key` header. "
+        "Contact the NordSpot team to obtain a key.\n\n"
+        "```\n"
+        "X-API-Key: your-key-here\n"
+        "```\n\n"
+        "## Zones\n\n"
+        "| Zone | Region |\n"
+        "|------|--------|\n"
+        "| SE1  | Northern Sweden (Luleå) |\n"
+        "| SE2  | Northern-central Sweden (Sundsvall) |\n"
+        "| SE3  | Southern-central Sweden (Stockholm) |\n"
+        "| SE4  | Southern Sweden (Malmö) |\n"
     ),
     version="0.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    openapi_url="/api/v1/openapi.json",
+    openapi_tags=_TAGS_METADATA,
     lifespan=lifespan,
     contact={
         "name": "ATO Energy",
