@@ -74,7 +74,12 @@ def _parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     args = _parse_args()
 
-    end_dt = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    # Day-ahead prices for day D are published at noon on D-1.
+    # Fetch through end of D+1 so today's and tomorrow's full 24-hour schedules
+    # are always in ClickHouse and available as lag features for inference.
+    end_dt = datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ) + pd.Timedelta(days=2)
     start_str = args.start or os.getenv("TRAIN_START_DATE", "2023-01-01")
     start_dt = datetime.fromisoformat(start_str).replace(tzinfo=timezone.utc)
     if args.end:
