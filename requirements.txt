@@ -12,10 +12,14 @@ boto3>=1.34                # AWS SDK — used for S3 model artifact sync
 
 # ── ML ────────────────────────────────────────────────────────────────────────
 lightgbm==4.6.0            # Primary forecasting model (quantile regression)
+xgboost>=2.0,<3.0          # XGBoost quantile model (reg:quantileerror, Story 4.3)
+catboost>=1.2,<2.0         # CatBoost quantile model (native categoricals, Story 4.4)
 scikit-learn==1.8.0        # Ridge baseline, LASSO (LEAR), metrics
 numpy>=2.0.0              # feast 0.64 requires >=2.0; GE 0.18 declares <2.0 but works in practice
 pandas==2.3.3
 holidays==0.96             # Swedish public holiday calendar
+mlflow>=2.13,<3.0          # Experiment tracking, model registry (Epic 4)
+shap>=0.44,<1.0            # SHAP interpretability — TreeExplainer for LGBM/XGB/CatBoost (Story 4.5)
 
 # ── Data quality & transforms ─────────────────────────────────────────────────
 great-expectations>=0.18,<1.0  # Bronze-layer expectation suites (PandasDataset API)

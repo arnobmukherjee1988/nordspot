@@ -61,6 +61,7 @@ services:
     environment:
       TIMEDB_CH_URL: http://nordspot:nordspot@clickhouse:8123/nordspot
       WEATHER_CACHE_PATH: /app/data/.weather_cache.sqlite
+      MLFLOW_TRACKING_URI: http://mlflow:5000
     ports:
       - "8501:8501"
     volumes:
