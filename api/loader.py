@@ -50,9 +50,9 @@ def load_production_models(
 
     # -- 1. Disk check (primary gate) -----------------------------------------
     required_files = [
-        MODEL_DIR / "ensemble_q05.pkl",
-        MODEL_DIR / "ensemble_q50.pkl",
-        MODEL_DIR / "ensemble_q95.pkl",
+        MODEL_DIR / "ens_q05.pkl",
+        MODEL_DIR / "ens_q50.pkl",
+        MODEL_DIR / "ens_q95.pkl",
     ]
     missing = [str(f) for f in required_files if not f.exists()]
     if missing:
