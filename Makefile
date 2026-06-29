@@ -20,7 +20,7 @@ train:     ## Run model training
 	python -m ml.train
 
 migrate:   ## Create ClickHouse schema (idempotent — safe to re-run)
-	python -m db.schema
+	PYTHONPATH=. python -m db.schema
 
 logs:      ## Tail logs from all running containers
 	docker compose logs -f

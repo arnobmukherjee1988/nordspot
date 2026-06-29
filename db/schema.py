@@ -6,7 +6,10 @@ Two storage layers:
     These use clickhouse-connect and are created via create_zone_tables().
 """
 
+from dotenv import load_dotenv
 from timedb import TimeDBClient
+
+load_dotenv()
 
 # ── ClickHouse DDL — zone-aware Silver tables ─────────────────────────────────
 # All tables: MergeTree, partitioned by month, ordered by (zone, valid_time).
