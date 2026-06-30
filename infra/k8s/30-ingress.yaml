@@ -1,0 +1,55 @@
+# Ingress - routes external HTTP traffic to internal services.
+#
+# Local K3s: uses Traefik (default K3s ingress controller).
+#   ingressClassName: traefik
+#
+# GKE: uses the GKE Ingress controller.
+#   ingressClassName: gce
+#   Add annotation: kubernetes.io/ingress.global-static-ip-name: nordspot-ip
+#
+# Switch ingressClassName below when deploying to GKE.
+#
+# Route table:
+#   /v1/*       -> api:8000      (FastAPI - day-ahead forecasts)
+#   /dashboard  -> dashboard:8501 (Streamlit)
+#   /mlflow     -> mlflow:5000   (MLflow UI - internal only, restrict in prod)
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nordspot-ingress
+  namespace: nordspot
+  annotations:
+    # Traefik (K3s default) - strip the /v1 prefix before forwarding
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik   # change to 'gce' for GKE
+  rules:
+    - http:
+        paths:
+          # FastAPI - probabilistic forecasts
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 8000
+
+          # Streamlit dashboard
+          - path: /dashboard
+            pathType: Prefix
+            backend:
+              service:
+                name: dashboard
+                port:
+                  number: 8501
+
+          # MLflow UI (restrict to VPN/internal in production)
+          - path: /mlflow
+            pathType: Prefix
+            backend:
+              service:
+                name: mlflow
+                port:
+                  number: 5000

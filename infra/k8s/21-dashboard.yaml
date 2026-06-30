@@ -1,0 +1,103 @@
+# NordSpot Streamlit dashboard
+# Single replica - Streamlit is stateless so scaling is straightforward
+# but one replica is enough for internal use.
+#
+# NOTE: The dashboard image is built from the root Dockerfile (not Dockerfile.api).
+# Add a dashboard build step to .github/workflows/build.yml when ready.
+# For now, the image tag below is a placeholder.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+  namespace: nordspot
+  labels:
+    app: dashboard
+    app.kubernetes.io/part-of: nordspot
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dashboard
+  template:
+    metadata:
+      labels:
+        app: dashboard
+    spec:
+      containers:
+        - name: dashboard
+          image: ghcr.io/arnobmukherjee1988/nordspot-dashboard:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8501
+          envFrom:
+            - configMapRef:
+                name: nordspot-config
+          env:
+            - name: CLICKHOUSE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: nordspot-secrets
+                  key: CLICKHOUSE_USER
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nordspot-secrets
+                  key: CLICKHOUSE_PASSWORD
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 4
+          readinessProbe:
+            httpGet:
+              path: /_stcore/health
+              port: 8501
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          volumeMounts:
+            - name: model
+              mountPath: /app/model
+              readOnly: true
+            - name: weather-cache
+              mountPath: /app/data
+      volumes:
+        - name: model
+          emptyDir: {}
+        - name: weather-cache
+          persistentVolumeClaim:
+            claimName: weather-cache-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: weather-cache-pvc
+  namespace: nordspot
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard
+  namespace: nordspot
+  labels:
+    app: dashboard
+spec:
+  selector:
+    app: dashboard
+  ports:
+    - port: 8501
+      targetPort: 8501

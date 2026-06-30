@@ -1,0 +1,28 @@
+# Non-sensitive configuration values shared across services.
+# Sensitive values (passwords, API keys) live in 02-secrets.yaml (template)
+# and in GCP Secret Manager for production.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nordspot-config
+  namespace: nordspot
+data:
+  # -- ClickHouse ------------------------------------------------------------
+  CLICKHOUSE_HOST: "clickhouse"
+  CLICKHOUSE_PORT: "8123"
+  CLICKHOUSE_DB: "nordspot"
+
+  # -- Internal service URLs -------------------------------------------------
+  # These use Kubernetes DNS names (service-name.namespace.svc.cluster.local)
+  TIMEDB_CH_URL: "http://nordspot:nordspot@clickhouse:8123/nordspot"
+  MLFLOW_TRACKING_URI: "http://mlflow:5000"
+  REDIS_URL: "redis://redis:6379"
+
+  # -- Feature store ---------------------------------------------------------
+  FEAST_REPO_PATH: "feature_store/"
+
+  # -- Model -----------------------------------------------------------------
+  MODEL_DIR: "/app/model"
+
+  # -- Weather cache ---------------------------------------------------------
+  WEATHER_CACHE_PATH: "/app/data/.weather_cache.sqlite"
