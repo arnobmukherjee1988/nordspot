@@ -50,6 +50,9 @@ jobs:
       MODEL_DIR: ./model
       # Prevents LightGBM / XGBoost from spawning many threads in CI
       OMP_NUM_THREADS: "2"
+      # Dummy value - unit tests mock EntsoePandasClient so no real API call is made.
+      # The real key lives in the ENTSOE_API_KEY secret used by daily_pipeline.yml.
+      ENTSOE_API_KEY: "ci-placeholder"
 
     steps:
 
