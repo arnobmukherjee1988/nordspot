@@ -8,9 +8,8 @@
 #   1. Checkout code
 #   2. Set up Python 3.12 with pip cache
 #   3. Install all dependencies
-#   4. ruff check (linting)
-#   5. ruff format --check (formatting)
-#   6. pytest tests/unit/ with coverage report
+#   4. pre-commit run --all-files (lint + format using pinned ruff v0.4.9)
+#   5. pytest tests/unit/ with coverage report
 # ------------------------------------------------------------------------------
 
 name: CI
@@ -72,12 +71,11 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
-      # -- 4. Lint -----------------------------------------------------------
-      - name: ruff check (lint)
-        run: ruff check .
-
-      - name: ruff format --check
-        run: ruff format --check .
+      # -- 4. Lint + format (pre-commit manages its own pinned ruff v0.4.9) --
+      - name: pre-commit (ruff lint + format check)
+        run: |
+          pip install pre-commit
+          pre-commit run --all-files
 
       # -- 5. Unit tests with coverage ---------------------------------------
       - name: Run unit tests
