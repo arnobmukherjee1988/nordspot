@@ -1,0 +1,111 @@
+# ------------------------------------------------------------------------------
+# CI - Lint and Unit Tests
+#
+# Runs on every push and pull request.
+# Required status check: PRs cannot be merged if this workflow fails.
+#
+# Steps:
+#   1. Checkout code
+#   2. Set up Python 3.12 with pip cache
+#   3. Install all dependencies
+#   4. ruff check (linting)
+#   5. ruff format --check (formatting)
+#   6. pytest tests/unit/ with coverage report
+# ------------------------------------------------------------------------------
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["main", "develop"]
+
+jobs:
+  test:
+    name: Lint and Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # -- ClickHouse service (required by db.schema / tests that import it) ----
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:24.3
+        env:
+          CLICKHOUSE_DB: se3db
+          CLICKHOUSE_USER: se3user
+          CLICKHOUSE_PASSWORD: se3password
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+        ports:
+          - 8123:8123
+          - 9000:9000
+        options: >-
+          --health-cmd "wget --spider -q http://localhost:8123/ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+          --health-start-period 30s
+
+    env:
+      TIMEDB_CH_URL: http://se3user:se3password@localhost:8123/se3db
+      MODEL_DIR: ./model
+      # Prevents LightGBM / XGBoost from spawning many threads in CI
+      OMP_NUM_THREADS: "2"
+
+    steps:
+
+      # -- 1. Checkout -------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -- 2. Python ---------------------------------------------------------
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # -- 3. Dependencies ---------------------------------------------------
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      # -- 4. Lint -----------------------------------------------------------
+      - name: ruff check (lint)
+        run: ruff check .
+
+      - name: ruff format --check
+        run: ruff format --check .
+
+      # -- 5. Unit tests with coverage ---------------------------------------
+      - name: Run unit tests
+        run: |
+          pytest tests/unit/ \
+            -v \
+            --tb=short \
+            --cov=. \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml
+
+      # -- 6. Upload coverage report -----------------------------------------
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ github.run_id }}
+          path: coverage.xml
+          retention-days: 30
+
+      # -- 7. Job summary ----------------------------------------------------
+      - name: Write job summary
+        if: always()
+        run: |
+          echo "## CI run - $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Result |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered by | ${{ github.event_name }} |" >> $GITHUB_STEP_SUMMARY

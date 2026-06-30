@@ -1,5 +1,8 @@
 # NordSpot
 
+[![CI](https://github.com/arnobmukherjee1988/nordspot/actions/workflows/ci.yml/badge.svg)](https://github.com/arnobmukherjee1988/nordspot/actions/workflows/ci.yml)
+[![Build](https://github.com/arnobmukherjee1988/nordspot/actions/workflows/build.yml/badge.svg)](https://github.com/arnobmukherjee1988/nordspot/actions/workflows/build.yml)
+
 Production-grade electricity spot price forecasting platform for the Nordic market.
 
 NordSpot ingests real-time data from ENTSO-E and Open-Meteo, trains a suite of

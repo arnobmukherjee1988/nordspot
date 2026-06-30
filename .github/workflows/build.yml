@@ -1,0 +1,93 @@
+# ------------------------------------------------------------------------------
+# Build and Push Docker Images
+#
+# Triggers on every push to main (after CI passes).
+# Builds the FastAPI image and pushes it to GitHub Container Registry (ghcr.io).
+# Image is tagged with the short git SHA for full traceability.
+#
+# Note: This workflow uses GitHub Container Registry (free, no GCP needed).
+# When GKE is set up in Epic 8, add a second push step targeting
+# Artifact Registry (us-docker.pkg.dev/<project>/nordspot/api:<sha>).
+#
+# Required permissions (set in repo Settings -> Actions -> General):
+#   packages: write   (to push to ghcr.io)
+#
+# No extra secrets required - GITHUB_TOKEN is automatically available.
+# ------------------------------------------------------------------------------
+
+name: Build
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build-api:
+    name: Build and push nordspot-api
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Required to push to ghcr.io
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+
+      # -- 1. Checkout -------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -- 2. Docker Buildx --------------------------------------------------
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # -- 3. Log in to GitHub Container Registry ----------------------------
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # -- 4. Derive image metadata (tags + labels) --------------------------
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/nordspot-api
+          tags: |
+            # Short git SHA (e.g. ghcr.io/.../nordspot-api:a1b2c3d)
+            type=sha,prefix=,format=short
+            # Always tag the latest push to main as 'latest'
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # -- 5. Build and push image -------------------------------------------
+      - name: Build and push nordspot-api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.api
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Cache layers in GitHub Actions cache for faster rebuilds
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # -- 6. Job summary ----------------------------------------------------
+      - name: Write job summary
+        if: success()
+        run: |
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+          echo "## Docker build - $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | \`ghcr.io/${{ github.repository_owner }}/nordspot-api\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| SHA tag | \`$SHORT_SHA\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> When GKE is ready (Epic 8), add a push step to Artifact Registry and wire up deploy.yml." >> $GITHUB_STEP_SUMMARY
