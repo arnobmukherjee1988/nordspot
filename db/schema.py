@@ -72,6 +72,10 @@ SERIES = {
     "lgbm_q05": 20,
     "lgbm_q50": 21,
     "lgbm_q95": 22,
+    # Stacking ensemble forecast quantiles (written by the API on every request)
+    "ens_q05": 23,
+    "ens_q50": 24,
+    "ens_q95": 25,
     # LEAR forecast quantiles
     "lear_q05": 30,
     "lear_q50": 31,

@@ -1,0 +1,61 @@
+# Monitoring alert thresholds for NordSpot forecast quality.
+#
+# All thresholds are evaluated against 7-day rolling metrics computed by
+# monitoring/drift_detector.py.  A single breached threshold triggers an
+# alert and should prompt manual review or automated retraining.
+#
+# Threshold rationale
+# -------------------
+# rmae_max:
+#   rMAE > 1.2 means the model is more than 20 % worse than a naive
+#   same-hour-yesterday baseline.  At this point the model adds little value.
+#
+# pinball_q50_multiplier:
+#   Alert when 7-day pinball loss exceeds this multiple of the long-run
+#   (90-day) average.  Relative threshold is robust to seasonal variation
+#   (winter prices are higher and harder to forecast than summer prices).
+#
+# coverage_min / coverage_max:
+#   Calibrated target is 0.90.  Below 0.80 the interval is too tight
+#   (unreliable for risk management).  Above 0.97 the interval is too wide
+#   (uninformative for trading decisions).
+#
+# min_hours:
+#   Minimum aligned (actual + forecast) hours in the window before an alert
+#   is raised.  Prevents false alerts on the first day after deployment when
+#   only a few hours of predictions exist.
+
+zones:
+  SE3:
+    rmae_max: 1.2
+    pinball_q50_multiplier: 1.5
+    coverage_min: 0.80
+    coverage_max: 0.97
+    min_hours: 48
+
+  SE1:
+    rmae_max: 1.2
+    pinball_q50_multiplier: 1.5
+    coverage_min: 0.80
+    coverage_max: 0.97
+    min_hours: 48
+
+  SE2:
+    rmae_max: 1.2
+    pinball_q50_multiplier: 1.5
+    coverage_min: 0.80
+    coverage_max: 0.97
+    min_hours: 48
+
+  SE4:
+    rmae_max: 1.2
+    pinball_q50_multiplier: 1.5
+    coverage_min: 0.80
+    coverage_max: 0.97
+    min_hours: 48
+
+# Rolling window for metric computation (days)
+window_days: 7
+
+# Long-run baseline window for pinball_q50_multiplier comparison (days)
+baseline_days: 90
