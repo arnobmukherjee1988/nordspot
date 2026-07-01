@@ -82,11 +82,17 @@ def sync_weather(zone: ZoneConfig, start: datetime, end: datetime) -> dict[str, 
     """Fetch weather -> write to Bronze -> write to ClickHouse."""
     dfs = fetch_weather(zone, start, end)
 
-    # Bronze layer: one wide Parquet per day (all variables as columns)
+    # Bronze layer: one wide Parquet per day (all variables as columns).
+    # Use left-join on valid_time so variables with different NaN counts
+    # (e.g. shortwave_radiation missing recent hours) don't crash on length mismatch.
     writer = LakeWriter()
     combined = pd.DataFrame({"valid_time": next(iter(dfs.values()))["valid_time"]})
     for var, df in dfs.items():
-        combined[var] = df["value"].values
+        combined = combined.merge(
+            df[["valid_time", "value"]].rename(columns={"value": var}),
+            on="valid_time",
+            how="left",
+        )
     combined["zone"] = zone.entsoe_eic
     for date, day_df in combined.groupby(combined["valid_time"].dt.date):
         writer.write(
