@@ -27,6 +27,7 @@ from datetime import datetime, timezone
 import holidays
 import numpy as np
 import pandas as pd
+from clickhouse_connect.driver.exceptions import DatabaseError as ChDatabaseError
 
 from config.zone_config import ZoneConfig
 from db.schema import SERIES
@@ -112,8 +113,18 @@ def _build_weather_interactions(
 
 
 def _ch_query_df(ch_client, sql: str) -> pd.DataFrame:
-    """Execute SQL via clickhouse-connect and return a pandas DataFrame."""
-    return ch_client.query_df(sql)
+    """Execute SQL via clickhouse-connect and return a pandas DataFrame.
+
+    Returns an empty DataFrame if the table does not exist (Silver tables such as
+    silver_generation/silver_load/silver_crossborder may not be populated in CI).
+    ClickHouse error code 60 = UNKNOWN_TABLE.
+    """
+    try:
+        return ch_client.query_df(sql)
+    except ChDatabaseError as exc:
+        if getattr(exc, "code", None) == 60:
+            return pd.DataFrame()
+        raise
 
 
 _EMPTY_DTI = pd.DatetimeIndex([], tz="UTC", name="valid_time")
