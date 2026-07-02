@@ -54,6 +54,9 @@ jobs:
     env:
       TIMEDB_CH_URL: http://se3user:se3password@localhost:8123/se3db
       MODEL_DIR: ./model
+      # File-based MLflow tracking - no server required in CI.
+      # Experiments are written to ./mlruns/ and uploaded as a build artifact.
+      MLFLOW_TRACKING_URI: ./mlruns
 
     steps:
 
@@ -114,6 +117,16 @@ jobs:
             metrics.json
             MODEL_LOG.md
           retention-days: 90
+          if-no-files-found: warn
+
+      # -- 8. Upload MLflow runs ---------------------------------------------
+      - name: Upload MLflow experiment runs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlruns-${{ github.run_id }}
+          path: mlruns/
+          retention-days: 30
           if-no-files-found: warn
 
       # -- 8. Job summary ----------------------------------------------------
