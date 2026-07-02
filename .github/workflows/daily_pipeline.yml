@@ -119,8 +119,8 @@ jobs:
         with:
           name: metrics-${{ github.run_id }}
           path: |
-            metrics.json
-            MODEL_LOG.md
+            model/metrics.json
+            model/MODEL_LOG.md
           retention-days: 90
           if-no-files-found: warn
 
