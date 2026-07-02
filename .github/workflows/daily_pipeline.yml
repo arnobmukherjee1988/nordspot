@@ -53,6 +53,11 @@ jobs:
     # -- Shared environment ---------------------------------------------------
     env:
       TIMEDB_CH_URL: http://se3user:se3password@localhost:8123/se3db
+      CLICKHOUSE_HOST: localhost
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_USER: se3user
+      CLICKHOUSE_PASSWORD: se3password
+      CLICKHOUSE_DB: se3db
       MODEL_DIR: ./model
       # File-based MLflow tracking - no server required in CI.
       # Experiments are written to ./mlruns/ and uploaded as a build artifact.
