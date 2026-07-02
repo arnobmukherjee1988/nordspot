@@ -25,7 +25,7 @@ def get_client() -> clickhouse_connect.driver.Client:
     return clickhouse_connect.get_client(
         host=os.getenv("CLICKHOUSE_HOST", "localhost"),
         port=int(os.getenv("CLICKHOUSE_PORT", "8123")),
-        username=os.getenv("CLICKHOUSE_USER", "nordspot"),
-        password=os.getenv("CLICKHOUSE_PASSWORD", "nordspot"),
-        database=os.getenv("CLICKHOUSE_DB", "nordspot"),
+        username=os.getenv("CLICKHOUSE_USER", "se3user"),
+        password=os.getenv("CLICKHOUSE_PASSWORD", "se3password"),
+        database=os.getenv("CLICKHOUSE_DB", "se3db"),
     )

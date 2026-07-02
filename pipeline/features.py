@@ -125,7 +125,7 @@ def _read_generation(
     """Read wind_mw and solar_mw from silver_generation for [start, end)."""
     sql = f"""
         SELECT valid_time, wind_mw, solar_mw
-        FROM nordspot.silver_generation
+        FROM silver_generation
         WHERE zone = '{zone_eic}'
           AND valid_time >= '{start.strftime("%Y-%m-%d %H:%M:%S")}'
           AND valid_time <  '{end.strftime("%Y-%m-%d %H:%M:%S")}'
@@ -148,7 +148,7 @@ def _read_load(
     """Read actual load from silver_load for [start, end)."""
     sql = f"""
         SELECT valid_time, value_mw AS load_mw
-        FROM nordspot.silver_load
+        FROM silver_load
         WHERE zone = '{zone_eic}'
           AND valid_time >= '{start.strftime("%Y-%m-%d %H:%M:%S")}'
           AND valid_time <  '{end.strftime("%Y-%m-%d %H:%M:%S")}'
@@ -175,7 +175,7 @@ def _read_net_exchange(
 
     imports_sql = f"""
         SELECT valid_time, sum(value_mw) AS imports_mw
-        FROM nordspot.silver_crossborder
+        FROM silver_crossborder
         WHERE to_zone = '{zone_eic}'
           AND valid_time >= '{start_s}'
           AND valid_time <  '{end_s}'
@@ -183,7 +183,7 @@ def _read_net_exchange(
     """
     exports_sql = f"""
         SELECT valid_time, sum(value_mw) AS exports_mw
-        FROM nordspot.silver_crossborder
+        FROM silver_crossborder
         WHERE from_zone = '{zone_eic}'
           AND valid_time >= '{start_s}'
           AND valid_time <  '{end_s}'
