@@ -140,13 +140,13 @@ jobs:
         run: |
           echo "## Training pipeline - $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f metrics.json ]; then
+          if [ -f model/metrics.json ]; then
             echo "### Metrics" >> $GITHUB_STEP_SUMMARY
             echo '```json' >> $GITHUB_STEP_SUMMARY
-            cat metrics.json >> $GITHUB_STEP_SUMMARY
+            cat model/metrics.json >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi
-          if [ -f MODEL_LOG.md ]; then
+          if [ -f model/MODEL_LOG.md ]; then
             echo "### Latest model log entry" >> $GITHUB_STEP_SUMMARY
-            tail -20 MODEL_LOG.md >> $GITHUB_STEP_SUMMARY
+            tail -20 model/MODEL_LOG.md >> $GITHUB_STEP_SUMMARY
           fi
