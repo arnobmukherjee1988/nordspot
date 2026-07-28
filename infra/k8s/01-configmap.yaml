@@ -26,3 +26,6 @@ data:
 
   # -- Weather cache ---------------------------------------------------------
   WEATHER_CACHE_PATH: "/app/data/.weather_cache.sqlite"
+
+  # -- Model artifact sync ---------------------------------------------------
+  GCS_BUCKET: "nordspot-bronze-nordspot1"
