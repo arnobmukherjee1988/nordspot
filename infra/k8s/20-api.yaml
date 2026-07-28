@@ -30,7 +30,7 @@ spec:
         - name: api
           # Built by .github/workflows/build.yml, tagged with git SHA.
           # 'latest' is updated on every push to main.
-          image: ghcr.io/arnobmukherjee1988/nordspot-api:latest
+          image: europe-north1-docker.pkg.dev/nordspot1/nordspot/nordspot-api:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
