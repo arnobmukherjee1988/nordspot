@@ -103,7 +103,37 @@ jobs:
           fi
           python -m ml.train $FORCE_FLAG
 
-      # -- 6. Upload model artefacts -----------------------------------------
+      # -- 6. Push model artifacts to GCS (picked up by GKE pods on next start) --
+      - name: Authenticate to GCP
+        if: success()
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Upload model to GCS
+        if: success()
+        uses: google-github-actions/upload-cloud-storage@v2
+        with:
+          path: model/
+          destination: nordspot-bronze-nordspot1/model
+          parent: false
+
+      # -- 7. Trigger rolling restart of GKE deployments --------------------
+      - name: Get GKE credentials
+        if: success()
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: nordspot-prod
+          location: europe-north1-a
+
+      - name: Restart API and dashboard with fresh models
+        if: success()
+        run: |
+          kubectl rollout restart deployment/api deployment/dashboard -n nordspot
+          kubectl rollout status deployment/api -n nordspot --timeout=120s
+          kubectl rollout status deployment/dashboard -n nordspot --timeout=120s
+
+      # -- 8. Upload model artefacts -----------------------------------------
       - name: Upload model artefacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -112,7 +142,7 @@ jobs:
           path: model/
           retention-days: 30
 
-      # -- 7. Upload metrics log ---------------------------------------------
+      # -- 9. Upload metrics log ---------------------------------------------
       - name: Upload metrics and model log
         if: always()
         uses: actions/upload-artifact@v4
@@ -124,7 +154,7 @@ jobs:
           retention-days: 90
           if-no-files-found: warn
 
-      # -- 8. Upload MLflow runs ---------------------------------------------
+      # -- 10. Upload MLflow runs --------------------------------------------
       - name: Upload MLflow experiment runs
         if: always()
         uses: actions/upload-artifact@v4
@@ -134,7 +164,7 @@ jobs:
           retention-days: 30
           if-no-files-found: warn
 
-      # -- 8. Job summary ----------------------------------------------------
+      # -- 11. Job summary ---------------------------------------------------
       - name: Write job summary
         if: success()
         run: |
