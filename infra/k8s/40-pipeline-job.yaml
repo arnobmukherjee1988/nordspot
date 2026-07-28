@@ -1,0 +1,54 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: pipeline-init
+  namespace: nordspot
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: pipeline
+          image: europe-north1-docker.pkg.dev/nordspot1/nordspot/nordspot-dashboard:latest
+          imagePullPolicy: Always
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -e
+              echo "=== Initialising schema ==="
+              python -m db.schema
+              echo "=== Fetching prices ==="
+              python -m pipeline.fetch_prices
+              echo "=== Fetching weather ==="
+              python -m pipeline.fetch_weather
+              echo "=== Training models ==="
+              python -m ml.train
+              echo "=== Done ==="
+          envFrom:
+            - configMapRef:
+                name: nordspot-config
+          env:
+            - name: CLICKHOUSE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: nordspot-secrets
+                  key: CLICKHOUSE_USER
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nordspot-secrets
+                  key: CLICKHOUSE_PASSWORD
+            - name: ENTSOE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nordspot-secrets
+                  key: ENTSOE_API_KEY
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "1000m"
+            limits:
+              memory: "4Gi"
+              cpu: "2000m"
+      backoffLimit: 0

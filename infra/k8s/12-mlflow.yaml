@@ -84,6 +84,7 @@ metadata:
   labels:
     app: mlflow
 spec:
+  type: NodePort
   selector:
     app: mlflow
   ports:

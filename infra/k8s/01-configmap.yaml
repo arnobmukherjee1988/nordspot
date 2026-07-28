@@ -14,7 +14,7 @@ data:
 
   # -- Internal service URLs -------------------------------------------------
   # These use Kubernetes DNS names (service-name.namespace.svc.cluster.local)
-  TIMEDB_CH_URL: "http://nordspot:nordspot@clickhouse:8123/nordspot"
+  TIMEDB_CH_URL: "http://nordspot:nordspot2026@clickhouse:8123/nordspot"
   MLFLOW_TRACKING_URI: "http://mlflow:5000"
   REDIS_URL: "redis://redis:6379"
 
