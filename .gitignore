@@ -60,6 +60,9 @@ catboost_info/
 
 # Terraform - never commit real variable values or state files
 infra/terraform/terraform.tfvars
+
+# K8s secrets - contain base64-encoded production credentials
+infra/k8s/02-secrets.yaml
 infra/terraform/.terraform/
 infra/terraform/.terraform.lock.hcl
 infra/terraform/terraform.tfstate

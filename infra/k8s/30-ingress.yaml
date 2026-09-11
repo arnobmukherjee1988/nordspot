@@ -20,10 +20,9 @@ metadata:
   name: nordspot-ingress
   namespace: nordspot
   annotations:
-    # Traefik (K3s default) - strip the /v1 prefix before forwarding
-    traefik.ingress.kubernetes.io/router.entrypoints: web
+    kubernetes.io/ingress.global-static-ip-name: nordspot-ip
 spec:
-  ingressClassName: traefik   # change to 'gce' for GKE
+  ingressClassName: gce
   rules:
     - http:
         paths:

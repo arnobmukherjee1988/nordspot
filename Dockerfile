@@ -31,6 +31,7 @@ COPY db/        db/
 COPY ml/        ml/
 COPY pipeline/  pipeline/
 COPY dashboard/ dashboard/
+COPY config/    config/
 
 # model/ is NOT baked in — it is bind-mounted at runtime via docker-compose.
 # This placeholder ensures the directory exists if the mount is missing.

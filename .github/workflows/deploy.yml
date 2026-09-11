@@ -1,0 +1,59 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["Build"]
+    branches: ["main"]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Rolling deploy to GKE
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Only run if the Build workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: nordspot-prod
+          location: europe-north1-a
+          project_id: nordspot1
+
+      - name: Rolling restart API and dashboard
+        run: |
+          kubectl rollout restart deployment/api -n nordspot
+          kubectl rollout restart deployment/dashboard -n nordspot
+
+      - name: Wait for rollouts to complete
+        run: |
+          kubectl rollout status deployment/api -n nordspot --timeout=300s
+          kubectl rollout status deployment/dashboard -n nordspot --timeout=300s
+
+      - name: Write job summary
+        if: always()
+        run: |
+          echo "## Deploy — $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "| Deployment | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------------|--------|" >> $GITHUB_STEP_SUMMARY
+          kubectl get deployment api dashboard -n nordspot \
+            --no-headers \
+            -o custom-columns="NAME:.metadata.name,READY:.status.readyReplicas,DESIRED:.spec.replicas" \
+            | awk '{print "| " $1 " | " $2 "/" $3 " ready |"}' >> $GITHUB_STEP_SUMMARY || true
